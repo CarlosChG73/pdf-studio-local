@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Proyecto PDF</title>
+  </head>
+  <body>
+    <header class="app-header">
+      <h1>Proyecto PDF</h1>
+      <p class="app-subtitle">Consulta local de documentos</p>
+    </header>
+
+    <main id="app" class="app-main">
+      <section class="toolbar" aria-label="Documento">
+        <!-- Selección del documento PDF -->
+        <label class="file-button" for="pdf-file">Seleccionar PDF</label>
+        <input
+          id="pdf-file"
+          class="visually-hidden"
+          type="file"
+          accept=".pdf,application/pdf"
+        />
+
+        <!-- Estado del documento -->
+        <p id="pdf-status" class="status" role="status"></p>
+      </section>
+
+      <!-- Área de visualización del PDF -->
+      <section class="viewer" aria-label="Visor del documento">
+        <canvas id="pdf-canvas">Visualización del documento PDF</canvas>
+      </section>
+    </main>
+
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
