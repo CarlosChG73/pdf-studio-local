@@ -4,7 +4,7 @@ Aplicación local para consultar documentos PDF, con navegación, búsqueda, cop
 
 ## Estado
 
-Paso 1 completado: esqueleto del proyecto, interfaz base y selección de archivo (sin lectura del PDF todavía).
+Paso 2 completado: apertura de PDF, render de la primera página, navegación por páginas, salto a página y zoom (ajuste al ancho, página completa y manual). Todo el procesamiento ocurre en el dispositivo.
 
 ## Requisitos
 
@@ -24,22 +24,24 @@ npm run preview    # servir el build localmente
 ## Estructura
 
 ```
-index.html          Interfaz base (barra, visor, estado)
-src/main.ts         Punto de entrada y lógica de interfaz
-src/styles.css      Estilos y adaptación a tema claro/oscuro
-src/vite-env.d.ts   Tipos de Vite
+index.html              Interfaz base (barra, visor, estado)
+src/main.ts             Punto de entrada: conecta la interfaz con el visor
+src/app/viewer.ts       Estado del visor: documento, página, zoom y cancelación
+src/pdf/load.ts         Apertura del PDF y mensajes de error
+src/pdf/render.ts       Render de una página en el canvas (devicePixelRatio)
+src/pdf/worker.ts       Configuración del worker de PDF.js
+src/styles.css          Estilos y adaptación a tema claro/oscuro
+src/vite-env.d.ts       Tipos de Vite
 ```
 
 ## Hoja de ruta
 
 - [x] 1. Esqueleto del proyecto y selección de archivo
-- [ ] 2. Abrir PDF y renderizar la primera página (RF-01)
-- [ ] 3. Navegación por páginas (RF-02)
-- [ ] 4. Zoom y ajuste de visualización
-- [ ] 5. Búsqueda de texto (RF-03)
-- [ ] 6. Selección y copia (RF-04)
-- [ ] 7. Reconocimiento de una página en español (RF-09)
-- [ ] 8. Ciclo de vida de resultados (RF-10)
-- [ ] 9. Funcionamiento sin conexión (RC-01)
-- [ ] 10. Adaptación a móviles y temas
-- [ ] 11. Pruebas E2E y documentación de límites
+- [x] 2. Abrir PDF, renderizar páginas, navegar y zoom (RF-01, RF-02)
+- [ ] 3. Búsqueda de texto (RF-03)
+- [ ] 4. Selección y copia (RF-04)
+- [ ] 5. Reconocimiento de una página en español (RF-09)
+- [ ] 6. Ciclo de vida de resultados (RF-10)
+- [ ] 7. Funcionamiento sin conexión (RC-01)
+- [ ] 8. Adaptación a móviles y temas
+- [ ] 9. Pruebas E2E y documentación de límites

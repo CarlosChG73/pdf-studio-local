@@ -22,12 +22,40 @@
           accept=".pdf,application/pdf"
         />
 
+        <div class="controls" role="group" aria-label="Navegación">
+          <button id="prev-page" type="button" disabled aria-label="Página anterior">
+            &#8249;
+          </button>
+          <input
+            id="page-number"
+            class="page-input"
+            type="number"
+            min="1"
+            value="1"
+            inputmode="numeric"
+            aria-label="Número de página"
+            disabled
+          />
+          <span id="page-total" class="page-total">de —</span>
+          <button id="next-page" type="button" disabled aria-label="Página siguiente">
+            &#8250;
+          </button>
+        </div>
+
+        <div class="controls" role="group" aria-label="Zoom">
+          <button id="zoom-out" type="button" disabled aria-label="Reducir">−</button>
+          <span id="zoom-level" class="zoom-level">—</span>
+          <button id="zoom-in" type="button" disabled aria-label="Ampliar">+</button>
+          <button id="fit-width" type="button" disabled>Ajustar ancho</button>
+          <button id="fit-page" type="button" disabled>Página completa</button>
+        </div>
+
         <!-- Estado del documento -->
-        <p id="pdf-status" class="status" role="status"></p>
+        <p id="pdf-status" class="status" role="status">Ningún documento seleccionado.</p>
       </section>
 
       <!-- Área de visualización del PDF -->
-      <section class="viewer" aria-label="Visor del documento">
+      <section id="viewer" class="viewer" aria-label="Visor del documento">
         <canvas id="pdf-canvas">Visualización del documento PDF</canvas>
       </section>
     </main>
