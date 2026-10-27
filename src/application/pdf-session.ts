@@ -3,6 +3,7 @@ import { clampPage } from '../domain/pagination';
 import { findMatchRanges } from '../domain/search';
 import { openPdf } from '../infrastructure/pdf/document';
 import {
+  createTextLayer,
   drawHighlights,
   extractPageText,
   getPageSize,
@@ -71,6 +72,7 @@ export class PdfSession {
 
   constructor(
     private readonly canvas: HTMLCanvasElement,
+    private readonly textLayerHost: HTMLElement,
     private readonly scroller: HTMLElement,
     private readonly notify: (state: SessionState) => void,
   ) {
@@ -149,6 +151,7 @@ export class PdfSession {
     }
 
     this.resetCanvas();
+    this.textLayerHost.replaceChildren();
     this.emit();
   }
 
@@ -322,6 +325,12 @@ export class PdfSession {
 
       this.renderTask = null;
       this.zoom = scale;
+
+      const textLayer = await createTextLayer(document, this.page, viewport);
+
+      if (generation !== this.renderGeneration) return;
+
+      this.textLayerHost.replaceChildren(textLayer);
 
       const activeRect = await this.paintHighlights(viewport);
 

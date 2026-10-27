@@ -292,12 +292,78 @@ button:focus-visible,
   background: var(--surface);
 }
 
-#pdf-canvas {
-  display: block;
+.page {
+  position: relative;
   flex: 0 0 auto;
   margin: auto;
   background: var(--page);
   box-shadow: 0 1px 6px rgb(0 0 0 / 0.18);
+  --total-scale-factor: 1;
+  --scale-round-x: 1px;
+  --scale-round-y: 1px;
+}
+
+#pdf-canvas {
+  display: block;
+  background: var(--page);
+}
+
+/* Capa transparente de texto de PDF.js: permite seleccionar y copiar fragmentos. */
+.text-layer-host {
+  position: absolute;
+  inset: 0;
+  overflow: clip;
+  z-index: 1;
+  pointer-events: none;
+}
+
+.textLayer {
+  position: absolute;
+  inset: 0;
+  overflow: clip;
+  line-height: 1;
+  text-align: initial;
+  letter-spacing: normal;
+  word-spacing: normal;
+  -webkit-text-size-adjust: none;
+  text-size-adjust: none;
+  forced-color-adjust: none;
+  transform-origin: 0 0;
+  caret-color: CanvasText;
+  --min-font-size: 1;
+  --text-scale-factor: calc(var(--total-scale-factor) * var(--min-font-size));
+  --min-font-size-inv: calc(1 / var(--min-font-size));
+}
+
+.textLayer span,
+.textLayer br {
+  position: absolute;
+  color: transparent;
+  white-space: pre;
+  cursor: text;
+  transform-origin: 0 0;
+  user-select: text;
+  pointer-events: auto;
+}
+
+.textLayer > :not(.markedContent),
+.textLayer .markedContent span:not(.markedContent) {
+  z-index: 1;
+  --font-height: 0;
+  font-size: calc(var(--text-scale-factor) * var(--font-height));
+  --scale-x: 1;
+  --rotate: 0deg;
+  transform: rotate(var(--rotate)) scaleX(var(--scale-x))
+    scale(var(--min-font-size-inv));
+}
+
+.textLayer .markedContent {
+  display: contents;
+}
+
+.textLayer ::selection {
+  background: rgb(26 86 219 / 0.3);
+  color: transparent;
 }
 
 @media (max-width: 700px) {

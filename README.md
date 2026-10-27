@@ -4,7 +4,7 @@ Aplicación local para consultar documentos PDF, con navegación, búsqueda, cop
 
 ## Estado
 
-Paso 4 completado: OCR local de una página en español y ciclo de vida de resultados. El texto reconocido se puede copiar o descartar, y se borra automáticamente al abrir otro documento. La selección de fragmentos con el ratón sigue pendiente (requiere capa de texto sobre el canvas). Todo el procesamiento ocurre en el dispositivo.
+Paso 5 completado: selección de texto sobre el PDF y copia de fragmentos. La capa de texto transparente permite seleccionar con el ratón o el dedo y el botón «Copiar texto» copia la selección; si no hay ninguna, copia la página completa. Todo el procesamiento ocurre en el dispositivo.
 
 ## Requisitos
 
@@ -34,7 +34,7 @@ src/application/
   ocr-session.ts              Estado del OCR, progreso y descarte de resultados
 src/infrastructure/pdf/
   document.ts                 Apertura del PDF y mensajes de error
-  renderer.ts                 Render, extracción de texto y resaltados
+  renderer.ts                 Render, capa de texto, extracción y resaltados
   worker.ts                   Configuración del worker de PDF.js
 src/infrastructure/ocr/
   engine.ts                   Tesseract.js en español con recursos locales
@@ -59,7 +59,7 @@ resultados.
 - [x] 1. Esqueleto del proyecto y selección de archivo
 - [x] 2. Abrir PDF, renderizar páginas, navegar y zoom (RF-01, RF-02)
 - [x] 3. Búsqueda de texto con resaltado y navegación de coincidencias (RF-03)
-- [ ] 4. Selección y copia (RF-04): copia de página lista; falta selección de fragmentos
+- [x] 4. Selección y copia de fragmentos y de la página completa (RF-04)
 - [x] 5. Reconocimiento de una página en español (RF-09)
 - [x] 6. Ciclo de vida de resultados: copiar, descartar y no mezclar documentos (RF-10)
 - [ ] 7. Funcionamiento sin conexión (RC-01)

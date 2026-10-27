@@ -52,7 +52,7 @@
         <button id="fit-width" type="button" disabled>Ajustar ancho</button>
         <button id="fit-page" type="button" disabled>Página completa</button>
 
-        <button id="copy-page" type="button" disabled>Copiar página</button>
+        <button id="copy-page" type="button" disabled>Copiar texto</button>
         <button id="ocr-page" type="button" disabled>Reconocer página</button>
 
         <div class="controls search-controls" role="group" aria-label="Búsqueda">
@@ -105,9 +105,12 @@
         </div>
       </section>
 
-      <!-- Área de visualización del PDF -->
+      <!-- Visor del documento -->
       <section id="viewer" class="viewer" aria-label="Visor del documento">
-        <canvas id="pdf-canvas">Visualización del documento PDF</canvas>
+        <div id="pdf-page" class="page">
+          <canvas id="pdf-canvas">Visualización del documento PDF</canvas>
+          <div id="text-layer-host" class="text-layer-host"></div>
+        </div>
       </section>
     </main>
 

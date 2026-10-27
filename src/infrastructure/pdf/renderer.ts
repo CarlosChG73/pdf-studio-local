@@ -1,4 +1,4 @@
-import { Util } from 'pdfjs-dist';
+import { TextLayer, Util } from 'pdfjs-dist';
 import type { PDFDocumentProxy, PDFPageProxy, RenderTask } from 'pdfjs-dist';
 import type { TextRange } from '../../domain/search';
 
@@ -79,6 +79,37 @@ export async function renderPage(
 const MAX_OCR_SIDE = 2400;
 const OCR_SCALE = 2.5;
 
+/**
+ * Crea una capa de texto transparente superpuesta al canvas.
+ *
+ * Se devuelve un elemento nuevo en lugar de reutilizar un contenedor para que
+ * un render cancelado no pueda mezclar sus fragmentos con los de la página
+ * siguiente.
+ */
+export async function createTextLayer(
+  document: PDFDocumentProxy,
+  pageNumber: number,
+  viewport: ReturnType<PDFPageProxy['getViewport']>,
+): Promise<HTMLElement> {
+  const page = await document.getPage(pageNumber);
+  const textContent = await page.getTextContent();
+  const container = window.document.createElement('div');
+
+  container.className = 'textLayer';
+  container.style.setProperty('--total-scale-factor', String(viewport.scale));
+  container.style.setProperty('--scale-round-x', '1px');
+  container.style.setProperty('--scale-round-y', '1px');
+
+  const layer = new TextLayer({
+    textContentSource: textContent,
+    container,
+    viewport,
+  });
+
+  await layer.render();
+
+  return container;
+}
 /**
  * Renderiza una página en un canvas independiente, sin resaltados,
  * para alimentar el motor de OCR.

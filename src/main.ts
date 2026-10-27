@@ -16,6 +16,7 @@ function requireElement<T extends Element>(selector: string): T {
 const input = requireElement<HTMLInputElement>('#pdf-file');
 const status = requireElement<HTMLParagraphElement>('#pdf-status');
 const canvas = requireElement<HTMLCanvasElement>('#pdf-canvas');
+const textLayerHost = requireElement<HTMLElement>('#text-layer-host');
 const scroller = requireElement<HTMLElement>('#viewer');
 
 const prevButton = requireElement<HTMLButtonElement>('#prev-page');
@@ -47,6 +48,25 @@ const ocrDiscardButton = requireElement<HTMLButtonElement>('#ocr-discard');
 let lastState: SessionState | null = null;
 let notice: string | null = null;
 let noticeTimer: number | undefined;
+let selectionSnapshot = '';
+
+function selectedTextInViewer(): string {
+  const selection = window.getSelection();
+
+  if (
+    !selection ||
+    selection.rangeCount === 0 ||
+    selection.isCollapsed
+  ) {
+    return '';
+  }
+
+  const range = selection.getRangeAt(0);
+
+  if (!textLayerHost.contains(range.commonAncestorContainer)) return '';
+
+  return selection.toString();
+}
 
 function statusText(state: SessionState): string {
   if (!state.fileName) return 'Ningún documento seleccionado.';
@@ -196,7 +216,7 @@ async function copyToClipboard(text: string): Promise<boolean> {
 
 const ocr = new OcrSession((state) => renderOcr(state));
 
-const session = new PdfSession(canvas, scroller, (state) => {
+const session = new PdfSession(canvas, textLayerHost, scroller, (state) => {
   lastState = state;
   render(state);
 });
@@ -274,7 +294,27 @@ searchInput.addEventListener('keydown', (event) => {
 matchNextButton.addEventListener('click', () => void session.nextMatch());
 matchPrevButton.addEventListener('click', () => void session.previousMatch());
 
+copyButton.addEventListener('pointerdown', () => {
+  selectionSnapshot = selectedTextInViewer();
+});
+
 copyButton.addEventListener('click', async () => {
+  const selected = selectedTextInViewer() || selectionSnapshot;
+
+  selectionSnapshot = '';
+
+  if (selected.trim().length > 0) {
+    const copied = await copyToClipboard(selected);
+
+    showNotice(
+      copied
+        ? 'Selección copiada.'
+        : 'No se pudo copiar el texto al portapapeles.',
+    );
+
+    return;
+  }
+
   try {
     const text = await session.currentPageText();
 
