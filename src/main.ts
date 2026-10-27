@@ -1,4 +1,5 @@
 import './styles.css';
+import { OcrSession, type OcrState } from './application/ocr-session';
 import { PdfSession, type SessionState } from './application/pdf-session';
 import { describePdfError } from './infrastructure/pdf/document';
 
@@ -34,6 +35,15 @@ const matchNextButton = requireElement<HTMLButtonElement>('#match-next');
 const matchCount = requireElement<HTMLSpanElement>('#match-count');
 const copyButton = requireElement<HTMLButtonElement>('#copy-page');
 
+const ocrButton = requireElement<HTMLButtonElement>('#ocr-page');
+const ocrPanel = requireElement<HTMLElement>('#ocr-panel');
+const ocrMeta = requireElement<HTMLSpanElement>('#ocr-meta');
+const ocrMessage = requireElement<HTMLParagraphElement>('#ocr-message');
+const ocrProgress = requireElement<HTMLProgressElement>('#ocr-progress');
+const ocrText = requireElement<HTMLTextAreaElement>('#ocr-text');
+const ocrCopyButton = requireElement<HTMLButtonElement>('#ocr-copy');
+const ocrDiscardButton = requireElement<HTMLButtonElement>('#ocr-discard');
+
 let lastState: SessionState | null = null;
 let notice: string | null = null;
 let noticeTimer: number | undefined;
@@ -57,7 +67,52 @@ function statusText(state: SessionState): string {
   return base;
 }
 
+function renderOcr(state: OcrState): void {
+  const hasDocument = (lastState?.pages ?? 0) > 0;
+  const working = state.status === 'working';
+
+  ocrButton.disabled =
+    !hasDocument || (lastState?.busy ?? false) || working;
+  ocrButton.textContent = working ? 'Reconociendo…' : 'Reconocer página';
+
+  ocrPanel.hidden = state.status === 'idle';
+  ocrProgress.hidden = !working;
+  ocrText.hidden = state.status !== 'done';
+  ocrCopyButton.disabled = state.status !== 'done';
+  ocrDiscardButton.disabled = state.status === 'idle' || working;
+  ocrMeta.textContent = state.page ? `Página ${state.page}` : '';
+  ocrMessage.textContent = '';
+
+  switch (state.status) {
+    case 'working':
+      ocrProgress.value = Math.round(state.progress * 100);
+      ocrMessage.textContent = `${state.label}…`;
+
+      if (ocrText.value.length > 0) ocrText.value = '';
+      break;
+    case 'done':
+      ocrMeta.textContent = `Página ${state.page} · confianza ${
+        state.confidence ?? 0
+      } %`;
+
+      if (ocrText.value !== state.text) ocrText.value = state.text;
+      break;
+    case 'empty':
+      ocrMessage.textContent =
+        'No se ha reconocido texto legible en esta página.';
+      break;
+    case 'error':
+      ocrMessage.textContent =
+        state.error ?? 'No se pudo reconocer el texto.';
+      break;
+    case 'idle':
+      break;
+  }
+}
+
 function render(state: SessionState): void {
+  ocr.setDocument(state.token);
+
   const hasDocument = state.pages > 0;
   const idle = hasDocument && !state.busy;
 
@@ -72,6 +127,8 @@ function render(state: SessionState): void {
 
   searchInput.disabled = !hasDocument;
   copyButton.disabled = !hasDocument || state.busy;
+  ocrButton.disabled =
+    !hasDocument || state.busy || ocr.snapshot.status === 'working';
   matchPrevButton.disabled = state.matches === 0;
   matchNextButton.disabled = state.matches === 0;
 
@@ -89,6 +146,7 @@ function render(state: SessionState): void {
   }
 
   status.textContent = notice ?? statusText(state);
+  renderOcr(ocr.snapshot);
 }
 
 function showNotice(message: string, duration = 2500): void {
@@ -135,6 +193,8 @@ async function copyToClipboard(text: string): Promise<boolean> {
     textarea.remove();
   }
 }
+
+const ocr = new OcrSession((state) => renderOcr(state));
 
 const session = new PdfSession(canvas, scroller, (state) => {
   lastState = state;
@@ -234,3 +294,38 @@ copyButton.addEventListener('click', async () => {
     showNotice('No se pudo copiar el texto al portapapeles.');
   }
 });
+
+ocrButton.addEventListener('click', async () => {
+  ocrButton.disabled = true;
+
+  try {
+    const source = await session.prepareOcrPage();
+
+    if (!source) {
+      renderOcr(ocr.snapshot);
+      return;
+    }
+
+    await ocr.recognize(source);
+  } catch {
+    showNotice('No se pudo preparar la página para el OCR.', 5000);
+  } finally {
+    renderOcr(ocr.snapshot);
+  }
+});
+
+ocrCopyButton.addEventListener('click', async () => {
+  const text = ocr.snapshot.text;
+
+  if (text.length === 0) return;
+
+  const copied = await copyToClipboard(text);
+
+  showNotice(
+    copied
+      ? 'Texto reconocido copiado.'
+      : 'No se pudo copiar el texto al portapapeles.',
+  );
+});
+
+ocrDiscardButton.addEventListener('click', () => ocr.discard());

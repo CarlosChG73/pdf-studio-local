@@ -1,0 +1,3 @@
+# Recursos de OCR generados (worker, núcleos WASM y modelo): se guardan tal cual,
+# sin normalizar saltos de línea.
+public/ocr/** -text

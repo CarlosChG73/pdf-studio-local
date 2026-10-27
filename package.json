@@ -10,10 +10,12 @@
     "typecheck": "tsc --noEmit"
   },
   "devDependencies": {
+    "@tesseract.js-data/spa": "^1.0.0",
     "typescript": "^7.0.2",
     "vite": "^8.3.5"
   },
   "dependencies": {
-    "pdfjs-dist": "^6.4.299"
+    "pdfjs-dist": "^6.4.299",
+    "tesseract.js": "^7.0.0"
   }
 }

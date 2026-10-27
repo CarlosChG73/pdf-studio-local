@@ -76,6 +76,43 @@ export async function renderPage(
   return { task, viewport, width, height };
 }
 
+const MAX_OCR_SIDE = 2400;
+const OCR_SCALE = 2.5;
+
+/**
+ * Renderiza una página en un canvas independiente, sin resaltados,
+ * para alimentar el motor de OCR.
+ */
+export async function renderPageImage(
+  document: PDFDocumentProxy,
+  pageNumber: number,
+): Promise<HTMLCanvasElement> {
+  const page = await document.getPage(pageNumber);
+  const base = page.getViewport({ scale: 1 });
+  const scale = Math.min(
+    OCR_SCALE,
+    MAX_OCR_SIDE / Math.max(base.width, base.height),
+  );
+  const viewport = page.getViewport({ scale });
+  const canvas = window.document.createElement('canvas');
+
+  canvas.width = Math.max(1, Math.floor(viewport.width));
+  canvas.height = Math.max(1, Math.floor(viewport.height));
+
+  const context = canvas.getContext('2d');
+
+  if (!context) {
+    throw new Error('No se pudo preparar la imagen para OCR.');
+  }
+
+  context.fillStyle = '#ffffff';
+  context.fillRect(0, 0, canvas.width, canvas.height);
+
+  await page.render({ canvas, canvasContext: context, viewport }).promise;
+
+  return canvas;
+}
+
 export async function extractPageText(
   document: PDFDocumentProxy,
   pageNumber: number,

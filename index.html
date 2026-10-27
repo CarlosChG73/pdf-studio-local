@@ -47,11 +47,13 @@
           <button id="zoom-out" type="button" disabled aria-label="Reducir">−</button>
           <span id="zoom-level" class="zoom-level">—</span>
           <button id="zoom-in" type="button" disabled aria-label="Ampliar">+</button>
-          <button id="fit-width" type="button" disabled>Ajustar ancho</button>
-          <button id="fit-page" type="button" disabled>Página completa</button>
         </div>
 
+        <button id="fit-width" type="button" disabled>Ajustar ancho</button>
+        <button id="fit-page" type="button" disabled>Página completa</button>
+
         <button id="copy-page" type="button" disabled>Copiar página</button>
+        <button id="ocr-page" type="button" disabled>Reconocer página</button>
 
         <div class="controls search-controls" role="group" aria-label="Búsqueda">
           <input
@@ -74,6 +76,33 @@
 
         <!-- Estado del documento -->
         <p id="pdf-status" class="status" role="status">Ningún documento seleccionado.</p>
+      </section>
+
+      <!-- Resultado del OCR de la página actual -->
+      <section
+        id="ocr-panel"
+        class="ocr-panel"
+        aria-labelledby="ocr-title"
+        hidden
+      >
+        <div class="ocr-header">
+          <h2 id="ocr-title">Texto reconocido</h2>
+          <span id="ocr-meta" class="ocr-meta"></span>
+        </div>
+        <p id="ocr-message" class="ocr-message" role="status"></p>
+        <progress id="ocr-progress" class="ocr-progress" max="100" value="0"></progress>
+        <textarea
+          id="ocr-text"
+          class="ocr-text"
+          readonly
+          spellcheck="false"
+          aria-label="Texto reconocido de la página"
+          hidden
+        ></textarea>
+        <div class="ocr-actions">
+          <button id="ocr-copy" type="button" disabled>Copiar texto</button>
+          <button id="ocr-discard" type="button" disabled>Descartar</button>
+        </div>
       </section>
 
       <!-- Área de visualización del PDF -->

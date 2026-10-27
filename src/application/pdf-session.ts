@@ -7,6 +7,7 @@ import {
   extractPageText,
   getPageSize,
   renderPage,
+  renderPageImage,
   type HighlightRect,
   type PageText,
   type PageViewport,
@@ -31,6 +32,13 @@ export interface SessionState {
   query: string;
   matches: number;
   matchIndex: number;
+  token: number;
+}
+
+export interface OcrPageSource {
+  canvas: HTMLCanvasElement;
+  page: number;
+  token: number;
 }
 
 const MIN_ZOOM = 0.25;
@@ -58,6 +66,7 @@ export class PdfSession {
   private query = '';
   private matches: SearchMatch[] = [];
   private matchIndex = -1;
+  private documentToken = 0;
   private readonly textCache = new Map<number, PageText>();
 
   constructor(
@@ -90,6 +99,7 @@ export class PdfSession {
       query: this.query,
       matches: this.matches.length,
       matchIndex: this.matchIndex,
+      token: this.documentToken,
     };
   }
 
@@ -118,6 +128,7 @@ export class PdfSession {
   async close(): Promise<void> {
     this.renderGeneration += 1;
     this.searchGeneration += 1;
+    this.documentToken += 1;
     this.renderTask?.cancel();
     this.renderTask = null;
 
@@ -237,6 +248,24 @@ export class PdfSession {
     const pageText = await this.getPageText(this.page);
 
     return pageText.text;
+  }
+
+  /**
+   * Prepara una imagen limpia de la página actual para OCR.
+   * Devuelve también el token del documento para descartar resultados obsoletos.
+   */
+  async prepareOcrPage(): Promise<OcrPageSource | null> {
+    const document = this.document;
+
+    if (!document) return null;
+
+    const page = this.page;
+    const token = this.documentToken;
+    const canvas = await renderPageImage(document, page);
+
+    if (token !== this.documentToken) return null;
+
+    return { canvas, page, token };
   }
 
   private async moveMatch(step: number): Promise<void> {
