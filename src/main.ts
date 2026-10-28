@@ -1,4 +1,5 @@
 import './styles.css';
+import { registerSW } from 'virtual:pwa-register';
 import { OcrSession, type OcrState } from './application/ocr-session';
 import { PdfSession, type SessionState } from './application/pdf-session';
 import { describePdfError } from './infrastructure/pdf/document';
@@ -615,3 +616,151 @@ ocrCopyButton.addEventListener('click', async () => {
 });
 
 ocrDiscardButton.addEventListener('click', () => ocr.discard());
+
+// Updates affect the shell only. PDF/OCR sessions remain in memory until the
+// user explicitly accepts a reload in THIS tab, including external SW updates.
+const updateNotice = requireElement<HTMLElement>('#pwa-update');
+const updateTitle = requireElement<HTMLElement>('#pwa-update-title');
+const updateNow = requireElement<HTMLButtonElement>('#pwa-update-now');
+const updateLater = requireElement<HTMLButtonElement>('#pwa-update-later');
+const updateDetails = requireElement<HTMLDialogElement>('#pwa-update-details');
+const updateView = requireElement<HTMLButtonElement>('#pwa-update-view');
+const updateClose = requireElement<HTMLButtonElement>('#pwa-update-close');
+let swRegistration: ServiceWorkerRegistration | undefined;
+let reloadConsented = false;
+let reloadStarted = false;
+let checkingUpdate = false;
+let updateDeferred = false;
+let shellChanged = false;
+let focusBeforeUpdate: HTMLElement | null = null;
+
+function presentUpdate(): void {
+  if (updateNotice.hidden) return;
+  if (!compactTools.matches && !updateDetails.open) {
+    const focused = document.activeElement as HTMLElement | null;
+    updateDetails.show();
+    // A passive desktop notice must not take focus away from PDF tools.
+    focused?.focus({ preventScroll: true });
+    if (updateDetails.contains(document.activeElement)) {
+      (document.activeElement as HTMLElement | null)?.blur();
+    }
+  }
+  updateView.setAttribute('aria-expanded', String(compactTools.matches && updateDetails.open));
+}
+
+function offerUpdate(): void {
+  if (updateDeferred || reloadStarted) return;
+  const wasHidden = updateNotice.hidden;
+  if (wasHidden) focusBeforeUpdate = document.activeElement as HTMLElement | null;
+  updateTitle.textContent = 'Hay una nueva versión disponible.';
+  updateNotice.hidden = false;
+  presentUpdate();
+  if (wasHidden && compactTools.matches) window.dispatchEvent(new Event('resize'));
+}
+
+function shellUpdated(): void {
+  shellChanged = true;
+  if (reloadConsented && !reloadStarted) {
+    reloadStarted = true;
+    window.location.reload();
+  } else {
+    offerUpdate();
+  }
+}
+
+async function checkForUpdate(): Promise<void> {
+  if (!swRegistration || checkingUpdate || !navigator.onLine || swRegistration.installing) return;
+  checkingUpdate = true;
+  try {
+    await swRegistration.update();
+    if (swRegistration.waiting) offerUpdate();
+  } catch {
+    // Offline or an unavailable server must never interrupt PDF/OCR work.
+  } finally {
+    checkingUpdate = false;
+  }
+}
+
+const activateUpdate = registerSW({
+  immediate: true,
+  onNeedRefresh: offerUpdate,
+  // Override the plugin's default reload, also for updates accepted elsewhere.
+  onNeedReload: shellUpdated,
+  onRegisteredSW(_url, registration) {
+    swRegistration = registration;
+    if (!registration) return;
+    if (registration.waiting) offerUpdate();
+    // Native waiting detection also covers external installs and Workbox's
+    // time-based update heuristic during closely spaced deployments.
+    registration.addEventListener('updatefound', () => {
+      const installing = registration.installing;
+      installing?.addEventListener('statechange', () => {
+        if (installing.state === 'installed' && registration.waiting) offerUpdate();
+      });
+    });
+    void checkForUpdate();
+    window.setInterval(() => void checkForUpdate(), 60 * 60 * 1000);
+  },
+});
+
+if ('serviceWorker' in navigator) {
+  let previousController = navigator.serviceWorker.controller;
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    const next = navigator.serviceWorker.controller;
+    if (previousController && next && previousController !== next) shellUpdated();
+    previousController = next;
+  });
+}
+window.addEventListener('online', () => void checkForUpdate());
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible') void checkForUpdate();
+});
+
+function dismissUpdate(): void {
+  updateDeferred = true;
+  if (updateDetails.open) updateDetails.close();
+  updateView.setAttribute('aria-expanded', 'false');
+  updateNotice.hidden = true;
+  if (compactTools.matches) window.dispatchEvent(new Event('resize'));
+  if (focusBeforeUpdate?.isConnected && focusBeforeUpdate.getClientRects().length) {
+    focusBeforeUpdate.focus();
+  } else {
+    toolsToggle.focus();
+  }
+}
+updateLater.addEventListener('click', dismissUpdate);
+updateClose.addEventListener('click', dismissUpdate);
+updateDetails.addEventListener('cancel', (event) => {
+  event.preventDefault();
+  dismissUpdate();
+});
+updateDetails.addEventListener('keydown', (event) => {
+  // Let the dialog's native Escape/cancel close the notice, not the tools menu.
+  if (event.key === 'Escape') event.stopPropagation();
+});
+updateView.addEventListener('click', () => {
+  hideHelp();
+  if (!updateDetails.open) updateDetails.showModal();
+  updateView.setAttribute('aria-expanded', 'true');
+  updateClose.focus();
+});
+compactTools.addEventListener('change', () => {
+  if (updateDetails.open) updateDetails.close();
+  presentUpdate();
+});
+updateNow.addEventListener('click', async () => {
+  if (!window.confirm('Se recargará esta pestaña y deberá reabrir el PDF. Copie antes los resultados OCR que necesite conservar. ¿Actualizar ahora?')) return;
+  reloadConsented = true;
+  updateNow.disabled = true;
+  updateLater.disabled = true;
+  try {
+    if (shellChanged) shellUpdated();
+    else if (swRegistration?.waiting) await activateUpdate();
+    else throw new Error('La actualización todavía no está preparada.');
+  } catch {
+    reloadConsented = false;
+    updateNow.disabled = false;
+    updateLater.disabled = false;
+    updateTitle.textContent = 'No se pudo actualizar. Puede intentarlo más tarde.';
+  }
+});

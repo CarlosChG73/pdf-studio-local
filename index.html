@@ -29,6 +29,25 @@
       </div>
     </header>
 
+    <section id="pwa-update" class="pwa-update" aria-label="Actualización de la aplicación" hidden>
+      <div class="pwa-update-summary">
+        <p role="status">Nueva versión disponible</p>
+        <span aria-hidden="true">·</span>
+        <button id="pwa-update-view" type="button" aria-haspopup="dialog" aria-controls="pwa-update-details" aria-expanded="false">Ver</button>
+      </div>
+      <dialog id="pwa-update-details" class="pwa-update-details" aria-labelledby="pwa-update-title">
+        <div class="pwa-update-heading">
+          <p id="pwa-update-title" role="status">Hay una nueva versión disponible.</p>
+          <button id="pwa-update-close" type="button" aria-label="Cerrar aviso de actualización">Cerrar</button>
+        </div>
+        <p>Al actualizar deberá reabrir el PDF. Copie antes los resultados OCR que necesite conservar.</p>
+        <div class="controls">
+          <button id="pwa-update-now" type="button">Actualizar</button>
+          <button id="pwa-update-later" type="button">Más tarde</button>
+        </div>
+      </dialog>
+    </section>
+
     <main id="app" class="app-main" data-tools-open="true">
       <aside id="tools-panel" class="toolbar tools-panel" aria-labelledby="tools-title">
         <div class="tools-heading">

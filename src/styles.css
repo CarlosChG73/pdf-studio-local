@@ -79,6 +79,89 @@ body {
   margin-left: auto;
 }
 
+.pwa-update {
+  position: fixed;
+  top: 3.5rem;
+  right: 0.5rem;
+  z-index: 50;
+  width: min(24rem, calc(100% - 1rem));
+  max-height: calc(100dvh - 4rem);
+  overflow: auto;
+  padding: 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: 0.5rem;
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: 0 4px 16px rgb(0 0 0 / 0.2);
+  font-size: 0.85rem;
+}
+
+.pwa-update p { margin: 0 0 0.65rem; }
+.pwa-update button { min-height: 44px; }
+#pwa-update-now { background: var(--accent); color: var(--accent-text); }
+#pwa-update-now:hover { background: var(--accent-hover); }
+#pwa-update-now:active { background: var(--accent-active); }
+
+.pwa-update-summary,
+#pwa-update-close { display: none; }
+
+.pwa-update-details {
+  position: static;
+  width: auto;
+  max-width: none;
+  max-height: none;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+}
+
+@media (max-width: 900px) {
+  .pwa-update {
+    position: static;
+    flex: 0 0 auto;
+    width: 100%;
+    max-height: none;
+    padding: 0.125rem 0.5rem;
+    border: 0;
+    border-bottom: 1px solid var(--border);
+    border-radius: 0;
+    box-shadow: none;
+    font-size: 0.8rem;
+  }
+
+  .pwa-update-summary {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    white-space: nowrap;
+  }
+
+  .pwa-update-summary p { margin: 0; }
+  #pwa-update-view { min-height: 28px; padding: 0.15rem 0.4rem; font-size: inherit; }
+
+  .pwa-update-details {
+    position: fixed;
+    inset: 0;
+    width: min(24rem, calc(100% - 1rem));
+    max-height: calc(100dvh - 1rem);
+    margin: auto;
+    overflow: auto;
+    padding: 0.75rem;
+    border: 1px solid var(--border);
+    border-radius: 0.5rem;
+    background: var(--surface);
+    color: var(--text);
+  }
+
+  .pwa-update-details::backdrop { background: rgb(0 0 0 / 0.35); }
+  .pwa-update-heading { display: flex; align-items: start; gap: 0.5rem; margin-bottom: 0.5rem; }
+  .pwa-update-heading p { flex: 1; margin: 0; }
+  #pwa-update-close { display: inline-block; flex: 0 0 auto; }
+}
+
 .appearance-switch {
   display: inline-flex;
   align-items: center;
