@@ -13,6 +13,252 @@ function requireElement<T extends Element>(selector: string): T {
   return element;
 }
 
+type Appearance = 'light' | 'dark';
+const appearanceToggle = requireElement<HTMLButtonElement>('#appearance-toggle');
+const APPEARANCE_KEY = 'pdf-studio-appearance';
+let appearance: Appearance = 'light';
+
+function isAppearance(value: string | null): value is Appearance {
+  return value === 'light' || value === 'dark';
+}
+
+try {
+  const saved = localStorage.getItem(APPEARANCE_KEY);
+  if (isAppearance(saved)) appearance = saved;
+} catch {
+  // Storage may be unavailable; appearance still works for this session.
+}
+
+function applyAppearance(): void {
+  document.documentElement.dataset.theme = appearance;
+  appearanceToggle.setAttribute('aria-checked', String(appearance === 'dark'));
+}
+
+appearanceToggle.addEventListener('click', () => {
+  appearance = appearance === 'light' ? 'dark' : 'light';
+  applyAppearance();
+  try { localStorage.setItem(APPEARANCE_KEY, appearance); } catch {
+    // A blocked store must not interrupt PDF or OCR operations.
+  }
+});
+applyAppearance();
+
+const toolsToggle = requireElement<HTMLButtonElement>('#tools-toggle');
+const toolsClose = requireElement<HTMLButtonElement>('#tools-close');
+const toolsPanel = requireElement<HTMLElement>('#tools-panel');
+const app = requireElement<HTMLElement>('#app');
+const compactTools = window.matchMedia('(max-width: 900px)');
+
+function setToolsOpen(open: boolean, moveFocus = false): void {
+  if (!open && toolsPanel.contains(document.activeElement)) toolsToggle.focus();
+  toolsPanel.hidden = !open;
+  app.dataset.toolsOpen = String(open);
+  toolsToggle.setAttribute('aria-expanded', String(open));
+  toolsToggle.setAttribute('aria-label', open ? 'Ocultar herramientas' : 'Mostrar herramientas');
+  if (open && moveFocus) toolsClose.focus();
+  // Reuse the existing resize handler to fit the PDF to the available width.
+  window.dispatchEvent(new Event('resize'));
+}
+
+toolsToggle.addEventListener('click', () => setToolsOpen(Boolean(toolsPanel.hidden), Boolean(toolsPanel.hidden)));
+toolsClose.addEventListener('click', () => setToolsOpen(false));
+document.addEventListener('keydown', (event) => {
+  if (event.key === 'Escape' && !event.defaultPrevented && !toolsPanel.hidden) {
+    event.preventDefault();
+    setToolsOpen(false);
+    toolsToggle.focus();
+  }
+});
+compactTools.addEventListener('change', () => setToolsOpen(!compactTools.matches));
+setToolsOpen(!compactTools.matches);
+
+// Touch/narrow screens keep accessible descriptions without visible help text.
+// Desktop tooltips are fixed so scroll containers cannot clip them.
+const helpTexts: Record<string, string> = {
+  'tools-toggle': 'Muestra u oculta las herramientas.',
+  'tools-close': 'Cierra el panel de herramientas.',
+  'appearance-toggle': 'Alterna entre modo claro y oscuro.',
+  'pdf-file': 'Abre un PDF local.',
+  'prev-page': 'Va a la página anterior.',
+  'page-number': 'Escribe el número de página al que quieres ir.',
+  'next-page': 'Va a la página siguiente.',
+  'zoom-out': 'Reduce el tamaño del documento.',
+  'zoom-in': 'Amplía el documento.',
+  'fit-width': 'Ajusta la página al ancho del visor.',
+  'fit-page': 'Ajusta la página completa al visor.',
+  'copy-page': 'Copia la selección o el texto de la página.',
+  'ocr-page': 'Reconoce el texto de esta página en español.',
+  'search-input': 'Busca texto en el PDF.',
+  'match-prev': 'Va a la coincidencia anterior.',
+  'match-next': 'Va a la coincidencia siguiente.',
+  'ocr-text': 'Texto reconocido de la página.',
+  'ocr-copy': 'Copia el texto reconocido.',
+  'ocr-discard': 'Descarta el resultado del reconocimiento.',
+};
+const inlineHelp = window.matchMedia('(max-width: 900px), (hover: none)');
+const auxiliaryHints = requireElement<HTMLElement>('#auxiliary-hints');
+const hintGroups = new Map<HTMLElement, HTMLElement>();
+const helpEntries = Object.entries(helpTexts).map(([id, text]) => {
+  const control = requireElement<HTMLElement>(`#${id}`);
+  const tip = document.createElement('span');
+  tip.id = `help-${id}`;
+  tip.className = 'context-tooltip';
+  tip.textContent = text;
+  control.setAttribute('aria-describedby', [control.getAttribute('aria-describedby'), tip.id].filter(Boolean).join(' '));
+  const label = id === 'pdf-file' ? requireElement<HTMLElement>('label[for="pdf-file"]') : null;
+  const sources = label ? [control, label] : [control];
+  sources.forEach((source) => source.removeAttribute('title'));
+  let host = auxiliaryHints;
+  const group = control.closest<HTMLElement>('.controls');
+  if (group && toolsPanel.contains(control)) {
+    if (!hintGroups.has(group)) {
+      const hints = document.createElement('div');
+      hints.className = 'control-hints';
+      group.append(hints);
+      hintGroups.set(group, hints);
+    }
+    host = hintGroups.get(group)!;
+  } else if (id === 'pdf-file') {
+    host = document.createElement('div');
+    host.className = 'control-hints';
+    control.insertAdjacentElement('afterend', host);
+  }
+  return { control, tip, host, sources };
+});
+type HelpEntry = typeof helpEntries[number];
+let activeHelp: HelpEntry | null = null;
+let dismissedHelp: HelpEntry | null = null;
+let helpHideTimer: number | undefined;
+
+function hideHelp(): void {
+  window.clearTimeout(helpHideTimer);
+  if (activeHelp) activeHelp.tip.hidden = true;
+  activeHelp = null;
+}
+
+function showHelp(entry: HelpEntry): void {
+  if (inlineHelp.matches || dismissedHelp === entry) return;
+  hideHelp();
+  const anchor = entry.sources[entry.sources.length - 1];
+  const rect = anchor.getBoundingClientRect();
+  if (!anchor.getClientRects().length || rect.bottom <= 0 || rect.top >= window.innerHeight) return;
+  const panel = anchor.closest<HTMLElement>('#tools-panel, #ocr-panel');
+  const panelRect = panel?.getBoundingClientRect();
+  if (panelRect && (rect.bottom <= panelRect.top || rect.top >= panelRect.bottom)) return;
+  const gap = 10;
+  const edge = 8;
+  entry.tip.style.maxWidth = `${Math.min(260, window.innerWidth - edge * 2)}px`;
+  entry.tip.hidden = false;
+  const { width, height } = entry.tip.getBoundingClientRect();
+  const cx = (rect.left + rect.right) / 2;
+  const cy = (rect.top + rect.bottom) / 2;
+  const candidates = [
+    { side: 'top', x: cx - width / 2, y: rect.top - height - gap },
+    { side: 'right', x: rect.right + gap, y: cy - height / 2 },
+    ...(panelRect && panel?.id === 'tools-panel'
+      ? [{ side: 'right', x: panelRect.right + gap, y: cy - height / 2 }] : []),
+    { side: 'left', x: rect.left - width - gap, y: cy - height / 2 },
+    { side: 'bottom', x: cx - width / 2, y: rect.bottom + gap },
+    ...(anchor.closest('.app-header') ? [{
+      side: 'right',
+      x: requireElement<HTMLElement>('.app-header h1').getBoundingClientRect().right + gap,
+      y: cy - height / 2,
+    }] : []),
+  ];
+  const obstacles = Array.from(document.querySelectorAll<HTMLElement>(
+    'button, input:not(.visually-hidden), textarea, label.file-button, .app-header h1, .tools-heading h2',
+  )).filter((control) => control.getClientRects().length > 0)
+    .map((control) => {
+      const bounds = control.getBoundingClientRect();
+      const clip = control.closest<HTMLElement>('#tools-panel, #ocr-panel')?.getBoundingClientRect();
+      return {
+        left: Math.max(bounds.left, clip?.left ?? 0, 0),
+        right: Math.min(bounds.right, clip?.right ?? window.innerWidth, window.innerWidth),
+        top: Math.max(bounds.top, clip?.top ?? 0, 0),
+        bottom: Math.min(bounds.bottom, clip?.bottom ?? window.innerHeight, window.innerHeight),
+      };
+    }).filter((bounds) => bounds.right > bounds.left && bounds.bottom > bounds.top);
+  // A neighboring button may occupy the first side position. Try just beyond
+  // visible neighbors as well, without moving the tooltip to the panel's far edge.
+  candidates.push(...obstacles.flatMap((obstacle) => [
+    { side: 'right', x: obstacle.right + gap, y: cy - height / 2 },
+    { side: 'left', x: obstacle.left - width - gap, y: cy - height / 2 },
+  ]).filter(({ x }) =>
+    (x >= rect.right + gap && x - rect.right <= 250)
+    || (x + width <= rect.left - gap && rect.left - x - width <= 250),
+  ).sort((a, b) => Math.min(Math.abs(a.x - rect.right), Math.abs(a.x + width - rect.left))
+    - Math.min(Math.abs(b.x - rect.right), Math.abs(b.x + width - rect.left))));
+  const position = candidates.map((candidate) => ({
+    ...candidate,
+    x: Math.max(edge, Math.min(candidate.x, window.innerWidth - width - edge)),
+    y: Math.max(edge, Math.min(candidate.y, window.innerHeight - height - edge)),
+  })).find(({ x, y }) => !obstacles.some((obstacle) =>
+    x < obstacle.right + 4 && x + width > obstacle.left - 4
+    && y < obstacle.bottom + 4 && y + height > obstacle.top - 4,
+  ));
+  if (!position) {
+    entry.tip.hidden = true;
+    return;
+  }
+  entry.tip.dataset.side = position.side;
+  entry.tip.style.left = `${position.x}px`;
+  entry.tip.style.top = `${position.y}px`;
+  const horizontal = position.side === 'top' || position.side === 'bottom';
+  const arrow = horizontal ? cx - position.x : cy - position.y;
+  entry.tip.style.setProperty('--arrow-offset', `${Math.max(10, Math.min(arrow, (horizontal ? width : height) - 10))}px`);
+  activeHelp = entry;
+}
+
+function leaveHelp(entry: HelpEntry): void {
+  window.clearTimeout(helpHideTimer);
+  helpHideTimer = window.setTimeout(() => {
+    const engaged = entry.sources.some((source) => source.matches(':hover'))
+      || entry.tip.matches(':hover') || document.activeElement === entry.control;
+    if (!engaged) {
+      if (activeHelp === entry) hideHelp();
+      if (dismissedHelp === entry) dismissedHelp = null;
+    }
+  }, 200);
+}
+
+helpEntries.forEach((entry) => {
+  entry.sources.forEach((source) => {
+    source.addEventListener('pointerenter', (event) => { if (event.pointerType !== 'touch') showHelp(entry); });
+    source.addEventListener('pointerleave', () => leaveHelp(entry));
+  });
+  entry.control.addEventListener('focus', () => showHelp(entry));
+  entry.control.addEventListener('blur', () => leaveHelp(entry));
+  entry.tip.addEventListener('pointerenter', () => window.clearTimeout(helpHideTimer));
+  entry.tip.addEventListener('pointerleave', () => leaveHelp(entry));
+});
+document.addEventListener('keydown', (event) => {
+  if (event.key === 'Escape' && activeHelp) {
+    event.preventDefault();
+    dismissedHelp = activeHelp;
+    hideHelp();
+  }
+}, true);
+
+function updateHelpMode(): void {
+  hideHelp();
+  dismissedHelp = null;
+  helpEntries.forEach((entry) => {
+    entry.tip.removeAttribute('style');
+    entry.tip.hidden = true;
+    if (inlineHelp.matches) {
+      entry.tip.removeAttribute('role');
+      entry.host.append(entry.tip);
+    } else {
+      entry.tip.setAttribute('role', 'tooltip');
+      document.body.append(entry.tip);
+    }
+  });
+}
+inlineHelp.addEventListener('change', updateHelpMode);
+window.addEventListener('resize', () => { if (activeHelp) showHelp(activeHelp); });
+document.addEventListener('scroll', () => { if (activeHelp) showHelp(activeHelp); }, true);
+updateHelpMode();
+
 const input = requireElement<HTMLInputElement>('#pdf-file');
 const status = requireElement<HTMLParagraphElement>('#pdf-status');
 const canvas = requireElement<HTMLCanvasElement>('#pdf-canvas');

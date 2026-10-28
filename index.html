@@ -14,14 +14,29 @@
   </head>
   <body>
     <header class="app-header">
+      <button id="tools-toggle" type="button" aria-controls="tools-panel" aria-expanded="true" aria-label="Ocultar herramientas" title="Herramientas">
+        <span aria-hidden="true">☰</span>
+      </button>
       <h1>Proyecto PDF</h1>
-      <p class="app-subtitle">Consulta local de documentos</p>
+      <div id="appearance-control" class="appearance-control">
+        <button id="appearance-toggle" class="appearance-switch" type="button" role="switch" aria-checked="false" aria-label="Modo oscuro" title="Apariencia: Claro">
+          <span class="appearance-track" aria-hidden="true">
+            <span class="appearance-thumb"></span>
+            <span class="appearance-symbol">☀</span>
+            <span class="appearance-symbol">☾</span>
+          </span>
+        </button>
+      </div>
     </header>
 
-    <main id="app" class="app-main">
-      <section class="toolbar" aria-label="Documento">
-        <!-- Selección del documento PDF -->
-        <label class="file-button" for="pdf-file">Seleccionar PDF</label>
+    <main id="app" class="app-main" data-tools-open="true">
+      <aside id="tools-panel" class="toolbar tools-panel" aria-labelledby="tools-title">
+        <div class="tools-heading">
+          <h2 id="tools-title">Herramientas</h2>
+          <button id="tools-close" type="button" aria-label="Cerrar herramientas" title="Cerrar herramientas">×</button>
+        </div>
+        <!-- Un único conjunto de controles para escritorio y móvil. -->
+        <label class="file-button" for="pdf-file">Abrir PDF</label>
         <input
           id="pdf-file"
           class="visually-hidden"
@@ -53,13 +68,14 @@
           <button id="zoom-out" type="button" disabled aria-label="Reducir">−</button>
           <span id="zoom-level" class="zoom-level">—</span>
           <button id="zoom-in" type="button" disabled aria-label="Ampliar">+</button>
+          <button id="fit-width" type="button" disabled aria-label="Ajustar ancho" title="Ajustar ancho">Ancho</button>
+          <button id="fit-page" type="button" disabled aria-label="Página completa" title="Página completa">Página</button>
         </div>
 
-        <button id="fit-width" type="button" disabled>Ajustar ancho</button>
-        <button id="fit-page" type="button" disabled>Página completa</button>
-
-        <button id="copy-page" type="button" disabled>Copiar texto</button>
-        <button id="ocr-page" type="button" disabled>Reconocer página</button>
+        <div class="controls document-actions" role="group" aria-label="Texto y reconocimiento">
+          <button id="copy-page" type="button" disabled>Copiar texto</button>
+          <button id="ocr-page" type="button" disabled>Reconocer página</button>
+        </div>
 
         <div class="controls search-controls" role="group" aria-label="Búsqueda">
           <input
@@ -80,9 +96,9 @@
           </button>
         </div>
 
-        <!-- Estado del documento -->
         <p id="pdf-status" class="status" role="status">Ningún documento seleccionado.</p>
-      </section>
+        <div id="auxiliary-hints" class="control-hints auxiliary-hints"></div>
+      </aside>
 
       <!-- Resultado del OCR de la página actual -->
       <section
