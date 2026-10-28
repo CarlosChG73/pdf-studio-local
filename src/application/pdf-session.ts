@@ -65,6 +65,7 @@ export class PdfSession {
   private busy = false;
   private searching = false;
   private query = '';
+  private searchOriginPage: number | null = null;
   private matches: SearchMatch[] = [];
   private matchIndex = -1;
   private documentToken = 0;
@@ -114,23 +115,40 @@ export class PdfSession {
   }
 
   async open(file: File): Promise<void> {
-    await this.close();
+    // close() increments the token synchronously, before its first await.
+    const closing = this.close();
+    const token = this.documentToken;
 
-    const { task, document } = await openPdf(file);
-    this.loadingTask = task;
-    this.document = document;
-    this.fileName = file.name;
-    this.page = 1;
-    this.mode = 'fit-width';
-    this.zoom = 1;
+    try {
+      await closing;
+      if (token !== this.documentToken) return;
 
-    await this.render();
+      const { task, document } = await openPdf(file);
+      if (token !== this.documentToken) {
+        await task.destroy();
+        return;
+      }
+
+      this.loadingTask = task;
+      this.document = document;
+      this.fileName = file.name;
+      this.page = 1;
+      this.mode = 'fit-width';
+      this.zoom = 1;
+
+      await this.render();
+    } catch (error) {
+      // An obsolete opening must not report errors for the current document.
+      if (token !== this.documentToken) return;
+      throw error;
+    }
   }
 
   async close(): Promise<void> {
     this.renderGeneration += 1;
     this.searchGeneration += 1;
     this.documentToken += 1;
+    const token = this.documentToken;
     this.renderTask?.cancel();
     this.renderTask = null;
 
@@ -142,6 +160,7 @@ export class PdfSession {
     this.busy = false;
     this.searching = false;
     this.query = '';
+    this.searchOriginPage = null;
     this.matches = [];
     this.matchIndex = -1;
     this.textCache.clear();
@@ -149,6 +168,8 @@ export class PdfSession {
     if (task) {
       await task.destroy();
     }
+
+    if (token !== this.documentToken) return;
 
     this.resetCanvas();
     this.textLayerHost.replaceChildren();
@@ -205,9 +226,16 @@ export class PdfSession {
 
     if (!this.document || query.trim().length === 0) {
       this.searching = false;
+      if (this.document && this.searchOriginPage !== null) {
+        this.page = this.searchOriginPage;
+        this.scroller.scrollTop = 0;
+      }
+      this.searchOriginPage = null;
       await this.render();
       return;
     }
+
+    if (this.searchOriginPage === null) this.searchOriginPage = this.page;
 
     this.searching = true;
     this.emit();
@@ -215,26 +243,33 @@ export class PdfSession {
     const document = this.document;
     const found: SearchMatch[] = [];
 
-    for (let pageNumber = 1; pageNumber <= document.numPages; pageNumber += 1) {
-      const pageText = await this.getPageText(pageNumber);
+    try {
+      for (let pageNumber = 1; pageNumber <= document.numPages; pageNumber += 1) {
+        const pageText = await this.getPageText(pageNumber);
 
-      if (generation !== this.searchGeneration) return;
+        if (generation !== this.searchGeneration) return;
 
-      for (const range of findMatchRanges(pageText.text, query)) {
-        found.push({ page: pageNumber, ...range });
+        for (const range of findMatchRanges(pageText.text, query)) {
+          found.push({ page: pageNumber, ...range });
+        }
+      }
+
+      this.searching = false;
+      this.matches = found;
+
+      if (found.length > 0) {
+        this.matchIndex = 0;
+        this.page = found[0].page;
+        this.scroller.scrollTop = 0;
+      }
+
+      await this.render();
+    } finally {
+      if (generation === this.searchGeneration && this.searching) {
+        this.searching = false;
+        this.emit();
       }
     }
-
-    this.searching = false;
-    this.matches = found;
-
-    if (found.length > 0) {
-      this.matchIndex = 0;
-      this.page = found[0].page;
-      this.scroller.scrollTop = 0;
-    }
-
-    await this.render();
   }
 
   async nextMatch(): Promise<void> {
@@ -396,8 +431,9 @@ export class PdfSession {
       throw new Error('No hay ningún documento abierto.');
     }
 
+    const token = this.documentToken;
     const pageText = await extractPageText(document, pageNumber);
-    this.textCache.set(pageNumber, pageText);
+    if (token === this.documentToken) this.textCache.set(pageNumber, pageText);
 
     return pageText;
   }
