@@ -9,6 +9,6 @@
 - Antes de modificar archivos, explicar qué, por qué y cuáles; esperar autorización explícita.
 - No instalar dependencias, realizar commits, push ni operaciones externas sin autorización.
 - Verificar cambios autorizados mediante `node --test`, `npm run typecheck` y `npm run build`, según corresponda.
-- Referencia: 26 pruebas aprobadas con infraestructura simulada; no acreditan E2E, offline, compatibilidad ni rendimiento reales.
+- Referencia registrada en `5474919`: 29 pruebas aprobadas (26 con infraestructura simulada y 3 E2E Chromium), typecheck y build correctos. Ver alcance en README.md; no acreditan compatibilidad universal ni rendimiento. La aprobación visual definitiva del aviso compacto móvil sigue pendiente.
 - Informar fallos; no corregirlos fuera del alcance autorizado.
 - No crear ni modificar archivos fuera de la carpeta del proyecto ni ejecutar operaciones sobre recursos externos sin autorización explícita. No acceder a información ajena al proyecto.

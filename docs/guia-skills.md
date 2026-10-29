@@ -1,5 +1,16 @@
 # Skills para agentes de IA
 
+> **Referencia interna general, conservada como antecedente.** El contenido
+> original trata Claude Code y OpenCode; no documenta funciones de PDF Studio
+> Local ni obliga a instalar o crear Skills para usarlo. Las afirmaciones sobre
+> esos agentes conservan su contexto y fuentes originales; no se presentan como
+> instrucciones actuales de Codex. La versión `1.0` de esta guía no es una
+> versión publicada de la aplicación.
+>
+> Las instrucciones vigentes de Codex para este proyecto están en
+> [AGENTS.md](../AGENTS.md), conforme a la
+> [documentación oficial de OpenAI](https://learn.chatgpt.com/docs/agent-configuration/agents-md).
+
 **Por qué crearlas y cómo gobernarlas**
 
 | | |

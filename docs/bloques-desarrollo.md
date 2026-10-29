@@ -1,6 +1,59 @@
 # Bloques de desarrollo — Proyecto PDF
 
-## Estado vigente — 27 de octubre de 2026
+## Estado vigente — 28 de octubre de 2026
+
+Registro técnico interno. La guía pública, las funciones, los comandos, la
+preparación offline y la tabla de pruebas se mantienen en [README.md](../README.md);
+los cambios para usuarios, en [CHANGELOG.md](../CHANGELOG.md). Se enlazan aquí
+para evitar mantener copias divergentes de la descripción del producto.
+
+### Código y evidencia actuales
+
+- Arquitectura conservada: Vite/TypeScript, PDF.js, Tesseract.js y capas
+  `src/domain/`, `src/application/` y `src/infrastructure/`. Las sesiones siguen
+  dependiendo de infraestructura y APIs del navegador; no hay backend propio.
+- `index.html`, `src/main.ts` y `src/styles.css`: barra lateral contraíble, menú
+  móvil, temas Claro/Oscuro persistidos y ayudas de escritorio. No existe un modo
+  Automático. El selector no cambia los colores de las páginas PDF.
+- `vite.config.ts` y `src/main.ts`: registro `prompt`, aviso de versión,
+  consentimiento de recarga por pestaña y conservación de `ocr-recursos`.
+  En móvil se reserva una franja bajo la cabecera; «Ver» abre los detalles y
+  cerrar/aplazar recupera la altura. Su aprobación visual definitiva sigue pendiente.
+- `tests/e2e/offline.test.mjs`: recorrido PDF/búsqueda/OCR con motores reales en
+  Chromium, preparación online y reapertura offline con servidor detenido.
+- `tests/e2e/update.test.mjs`: migración desde `a91ac75`, dos versiones compiladas,
+  varias pestañas, consentimiento, franja móvil y conservación del OCR offline.
+  La migración inicial necesita cerrar todos los clientes antiguos y reabrir;
+  no se borran las cachés de la instalación habitual.
+
+### Trazabilidad y pendientes
+
+| Referencia Git | Evidencia registrada |
+|---|---|
+| `6a7b570` | Correcciones de concurrencia/búsqueda y 26 pruebas con infraestructura simulada |
+| `4925cb7` | Playwright y recorrido E2E PDF/OCR offline |
+| `a91ac75` | Interfaz responsiva, temas y ayudas contextuales |
+| `5474919` | Actualización PWA y aviso responsivo; 29 pruebas aprobadas, 0 fallidas, typecheck y build correctos |
+
+Las 29 pruebas se desglosan en 26 simuladas y 3 E2E Chromium. Son resultados
+anteriores, no nuevas ejecuciones durante esta edición. Los PDF E2E son
+sintéticos; la emulación no valida dispositivos físicos, portapapeles,
+fidelidad con muestras variadas, calidad OCR general ni rendimiento con PDF extensos.
+
+Siguen pendientes la aprobación visual del aviso móvil y las validaciones
+indicadas en el [README](../README.md#límites-y-validaciones-pendientes). La versión
+declarada es `0.1.0`; v1.0.0 es una publicación futura sin fecha acordada.
+Las reglas de trabajo pertenecen a [AGENTS.md](../AGENTS.md). Las versiones de
+los documentos históricos siguientes no son versiones del producto.
+
+---
+
+## Registro técnico del 27 de octubre de 2026 — histórico
+
+**Nota de contexto:** se conserva íntegro el registro anterior. Sus afirmaciones
+sobre 26 pruebas, ausencia de E2E, tema automático, pendientes y contenido del
+README describen aquel estado; no sustituyen el estado vigente ni autorizan
+nuevos trabajos. También se conserva la planificación original que lo sigue.
 
 El proyecto supera el esqueleto inicial: existen visor PDF, búsqueda, selección,
 copia, OCR y configuración PWA. La existencia de código no implica que todos los

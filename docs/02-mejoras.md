@@ -3,6 +3,22 @@
 Registro de todo lo observado usando la aplicación, antes de congelar el alcance
 de la v1. Se escribe en bruto; la clasificación y el orden se hacen después.
 
+## Estado del registro — 28 de octubre de 2026
+
+Documento interno de observaciones; no sustituye la guía pública del
+[README](../README.md) ni el [changelog](../CHANGELOG.md). Se conservan la lista,
+la resolución y los resultados históricos originales. Anotar una observación
+no autoriza su implementación ni añade requisitos a v1.0.0.
+
+- **Pendiente de revisión:** aprobación visual definitiva del aviso compacto de
+  actualización móvil. Está implementado y probado en ambos temas y en
+  393×852/320×240; no se clasifica como un nuevo fallo ni se da por aprobado.
+- **Evidencia actual registrada:** commit `5474919`, 29 pruebas aprobadas,
+  0 fallidas, typecheck y build correctos. Incluye 26 pruebas simuladas y 3 E2E
+  Chromium. Esta actualización documental no reejecuta comprobaciones.
+- El resultado de 26 pruebas que aparece en la resolución siguiente pertenece
+  al commit `6a7b570`; se conserva como evidencia de aquel momento.
+
 ## Cómo anotar
 
 Una línea por cosa. Formato libre, por ejemplo:

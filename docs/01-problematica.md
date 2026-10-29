@@ -1,5 +1,11 @@
 # Problemática — Proyecto PDF
 
+> **Antecedente interno conservado.** Este borrador recoge observaciones y planes
+> del 27 de octubre de 2026, no una validación del producto ni requisitos nuevos.
+> Su versión `0.1` identifica el documento. Las tablas vacías y los criterios
+> originales se mantienen; no se dan por cumplidos. La presentación y el estado
+> actuales están en [README.md](../README.md).
+
 | | |
 |---|---|
 | Versión | 0.1 |
