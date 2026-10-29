@@ -1,94 +1,116 @@
 # Mejoras: observaciones y cambios pendientes
 
-Registro de todo lo observado usando la aplicación, antes de congelar el alcance
-de la v1. Se escribe en bruto; la clasificación y el orden se hacen después.
+Registro interno de las observaciones realizadas durante el desarrollo de PDF Studio Local.
 
-## Actualización del registro — 29 de octubre de 2026
+Este documento conserva antecedentes, decisiones y resultados históricos. No sustituye la documentación vigente del [README](../README.md), el [historial de cambios](../CHANGELOG.md) ni las evidencias de [validación técnica](validacion.md).
 
-Se añadieron etiquetas editoriales, marcadores internos y una equivalencia puntual
-con vista previa, sin extrapolación. El fallo de inicialización OpenJPEG tiene
-recursos locales y una prueba JPEG2000. La migración y el foco del aviso PWA se
-revisan en [Validación](validacion.md), que distingue el resultado final y los
-pendientes reales. El [README](../README.md) mantiene la guía de uso vigente.
-Se conserva íntegro el registro anterior, incluidos sus resultados históricos.
+Las observaciones registradas no constituyen automáticamente requisitos ni autorizan modificaciones.
+
+## Estado actualizado — 29 de octubre de 2026
+
+Durante el desarrollo se incorporaron y verificaron las siguientes mejoras:
+
+- Navegación por etiquetas editoriales y marcadores internos de PDF.
+- Correspondencia puntual entre una página física y su numeración editorial, con vista previa y confirmación explícita, sin extrapolación a otras páginas.
+- Decodificación de imágenes JPEG2000 mediante recursos locales OpenJPEG y una alternativa JavaScript.
+- Correcciones de sincronización y gestión del foco en los avisos de actualización de la PWA.
+- Mejoras de presentación, contraste, controles y adaptación a pantallas pequeñas.
+
+**Aprobación visual:** el diseño actualizado de PDF Studio Local, incluido el aviso compacto de actualización móvil, fue aprobado por el usuario del proyecto.
+
+Las pruebas automatizadas, verificaciones de navegador, limitaciones conocidas y resultados posteriores se documentan en [Validación técnica](validacion.md).
+
+Se conserva el registro histórico que aparece a continuación, sin presentar sus resultados como verificaciones nuevas.
 
 ## Estado histórico del registro — 28 de octubre de 2026
 
-Documento interno de observaciones; no sustituye la guía pública del
-[README](../README.md) ni el [changelog](../CHANGELOG.md). Se conservan la lista,
-la resolución y los resultados históricos originales. Anotar una observación
-no autoriza su implementación ni añade requisitos a v1.0.0.
+Este apartado corresponde a las observaciones y decisiones registradas durante esa etapa del desarrollo.
 
-- **Pendiente de revisión:** aprobación visual definitiva del aviso compacto de
-  actualización móvil. Está implementado y probado en ambos temas y en
-  393×852/320×240; no se clasifica como un nuevo fallo ni se da por aprobado.
-- **Evidencia actual registrada:** commit `5474919`, 29 pruebas aprobadas,
-  0 fallidas, typecheck y build correctos. Incluye 26 pruebas simuladas y 3 E2E
-  Chromium. Esta actualización documental no reejecuta comprobaciones.
-- El resultado de 26 pruebas que aparece en la resolución siguiente pertenece
-  al commit `6a7b570`; se conserva como evidencia de aquel momento.
+- **Evidencia registrada:** commit `5474919`, con 29 pruebas aprobadas y ninguna fallida, `typecheck` y `build` correctos. Incluía 26 pruebas con infraestructura simulada y 3 pruebas E2E en Chromium.
+- **Aprobación visual del aviso móvil:** estaba pendiente en esa fecha; posteriormente fue confirmada por el usuario.
+- **Evidencia anterior:** las 26 pruebas mencionadas en la resolución de la búsqueda corresponden al commit `6a7b570`.
 
-## Cómo anotar
+Estos resultados se mantienen como antecedentes y no representan el estado más reciente de la suite.
 
-Una línea por cosa. Formato libre, por ejemplo:
+## Cómo registrar observaciones
 
-```
-momento: qué pasa ahora → qué debería pasar (tipo, prioridad)
+Anotar una observación por elemento, identificando el comportamiento actual y el esperado.
+
+Formato orientativo:
+
+```text
+Momento: qué sucede → qué debería suceder (tipo, prioridad)
 ```
 
-**Momento** (dónde estabas):
+**Momento:** abrir, navegar, zoom, buscar, seleccionar, copiar, OCR, móvil, sin conexión, instalar u otro.
 
-- abrir · navegar · zoom · buscar · seleccionar · copiar · OCR · móvil · sin conexión · instalar · otro
+**Tipo:**
 
-**Tipo**:
+- `fallo`: una función no trabaja correctamente.
+- `lógica`: funciona, pero su comportamiento no es el esperado.
+- `diseño`: dificulta el uso o presenta problemas visuales.
+- `falta`: función que no existe y cuya necesidad debe evaluarse.
 
-- `fallo` — no funciona o da error
-- `lógica` — funciona, pero no como quiero
-- `diseño` — se ve mal o se usa incómodo
-- `falta` — no existe y lo necesito
+**Prioridad:**
 
-**Prioridad**:
+- `alta`: impide realizar una tarea importante.
+- `media`: afecta frecuentemente la experiencia.
+- `baja`: detalle menor o mejora opcional.
 
-- `alta` — me impide trabajar
-- `media` — me molesta a menudo
-- `baja` — detalle o capricho
+La prioridad puede quedar sin asignar hasta que se revise la observación.
 
-Si no sabes el tipo o la prioridad, se deja en blanco: eso lo decido yo.
+## Registro de observaciones
 
-## Lista
+### 1. Restauración de página después de buscar
 
-1. buscar: al borrar la búsqueda me quedo en la página de la coincidencia → volver a la página donde estaba antes de buscar (lógica, media)
-   - **Resuelta** en el commit `6a7b570`: al borrar la búsqueda se restaura la página original, incluso después de navegar manualmente o editar la consulta.
-   - **Evidencia:** `tests/pdf-search-navigation.test.mjs`, pruebas «borrar busqueda vuelve a la pagina previa», «conserva origen tras editar consulta, recorrer resultados y navegar manualmente», «borrar una busqueda sin resultados tambien restaura el origen», «limpia origen al cambiar de documento» y «limpia origen al cerrar y reabrir».
-   - **Resultado de la suite completa:** 26 pruebas aprobadas, 0 fallidas (`node --test`).
-2.
-3.
-4.
-5.
-6.
-7.
-8.
-9.
-10.
-11.
-12.
-13.
-14.
-15.
-16.
-17.
-18.
-19.
-20.
+**Observación original:**
 
-## Dudas
+Al borrar una búsqueda, la aplicación permanecía en la página de una coincidencia, en lugar de regresar a la página desde la cual comenzó la búsqueda.
 
-Preguntas que no son cambios, sino cosas que no tengo claras.
+**Clasificación:** lógica, prioridad media.
 
--
+**Estado:** resuelta en el commit `6a7b570`.
 
-## Descartado / trabajo futuro
+**Solución registrada:**
 
-Ideas que aparecen pero que no entran en la v1.
+Al borrar la consulta se restaura la página original, incluso después de navegar manualmente o modificar el texto buscado.
 
--
+**Evidencias históricas:**
+
+Archivo: `tests/pdf-search-navigation.test.mjs`.
+
+Se comprobaron los siguientes escenarios:
+
+- Borrar la búsqueda y regresar a la página previa.
+- Conservar el origen después de editar la consulta, recorrer coincidencias y navegar manualmente.
+- Restaurar la página original cuando una búsqueda no encuentra resultados.
+- Limpiar el origen al cambiar de documento.
+- Limpiar el origen al cerrar y volver a abrir un documento.
+
+**Resultado histórico:** 26 pruebas aprobadas, ninguna fallida, mediante `node --test`.
+
+Las verificaciones posteriores y el estado actual se encuentran en [docs/validacion.md](validacion.md).
+
+## Nuevas observaciones
+
+Utilizar esta sección para registrar incidencias futuras, sin asumir que deberán implementarse.
+
+| Fecha | Función | Comportamiento observado | Comportamiento esperado | Tipo | Prioridad | Estado |
+|---|---|---|---|---|---|---|
+| | | | | | | |
+
+## Dudas pendientes
+
+Registrar aquí preguntas que requieran aclaración, sin considerarlas automáticamente solicitudes de cambio.
+
+Actualmente no hay dudas adicionales documentadas en este registro.
+
+## Ideas descartadas o reservadas para el futuro
+
+Esta sección permite conservar propuestas que no forman parte del alcance aprobado.
+
+Actualmente no hay propuestas adicionales registradas en esta sección.
+
+---
+
+**Nota de mantenimiento:** este documento conserva observaciones históricas. Las características actuales de PDF Studio Local se describen en el [README](../README.md), y las evidencias de funcionamiento se mantienen en [Validación técnica](validacion.md).

@@ -1,325 +1,101 @@
-# Bloques de desarrollo — Proyecto PDF
+# Bloques de desarrollo — PDF Studio Local
 
-## Estado vigente — 29 de octubre de 2026
+## Propósito
 
-La navegación editorial, los marcadores internos, la equivalencia puntual y los
-decodificadores locales están descritos en el [README](../README.md). La guía de
-[arquitectura](arquitectura.md) documenta el código propio y sus límites; el
-[registro de validación](validacion.md) recoge ejecuciones nuevas, mediciones y
-pendientes. No se añaden requisitos ni se declara publicada v1.0.0.
+Este documento resume las etapas de desarrollo de PDF Studio Local y su estado documentado.
 
-Los apartados siguientes se conservan como registro histórico; sus recuentos de
-26/29 pruebas no describen por sí solos la suite actual. La búsqueda OCR global
-y la conservación de documentos entre sesiones no forman parte del alcance
-confirmado para este cierre.
+La aplicación se encuentra en la versión de desarrollo `0.1.0`, en preparación para su primera publicación oficial. La versión `v1.0.0` todavía no se ha publicado.
 
-## Registro histórico — 28 de octubre de 2026
+Este registro es una referencia interna de planificación y seguimiento. No sustituye la documentación de [uso](../README.md), [arquitectura](arquitectura.md), [validación técnica](validacion.md) ni el [historial de cambios](../CHANGELOG.md).
 
-Registro técnico interno. La guía pública, las funciones, los comandos, la
-preparación offline y la tabla de pruebas se mantienen en [README.md](../README.md);
-los cambios para usuarios, en [CHANGELOG.md](../CHANGELOG.md). Se enlazan aquí
-para evitar mantener copias divergentes de la descripción del producto.
+## Etapas del proyecto
 
-### Código y evidencia actuales
-
-- Arquitectura conservada: Vite/TypeScript, PDF.js, Tesseract.js y capas
-  `src/domain/`, `src/application/` y `src/infrastructure/`. Las sesiones siguen
-  dependiendo de infraestructura y APIs del navegador; no hay backend propio.
-- `index.html`, `src/main.ts` y `src/styles.css`: barra lateral contraíble, menú
-  móvil, temas Claro/Oscuro persistidos y ayudas de escritorio. No existe un modo
-  Automático. El selector no cambia los colores de las páginas PDF.
-- `vite.config.ts` y `src/main.ts`: registro `prompt`, aviso de versión,
-  consentimiento de recarga por pestaña y conservación de `ocr-recursos`.
-  En móvil se reserva una franja bajo la cabecera; «Ver» abre los detalles y
-  cerrar/aplazar recupera la altura. Su aprobación visual definitiva sigue pendiente.
-- `tests/e2e/offline.test.mjs`: recorrido PDF/búsqueda/OCR con motores reales en
-  Chromium, preparación online y reapertura offline con servidor detenido.
-- `tests/e2e/update.test.mjs`: migración desde `a91ac75`, dos versiones compiladas,
-  varias pestañas, consentimiento, franja móvil y conservación del OCR offline.
-  La migración inicial necesita cerrar todos los clientes antiguos y reabrir;
-  no se borran las cachés de la instalación habitual.
-
-### Trazabilidad y pendientes
-
-| Referencia Git | Evidencia registrada |
-|---|---|
-| `6a7b570` | Correcciones de concurrencia/búsqueda y 26 pruebas con infraestructura simulada |
-| `4925cb7` | Playwright y recorrido E2E PDF/OCR offline |
-| `a91ac75` | Interfaz responsiva, temas y ayudas contextuales |
-| `5474919` | Actualización PWA y aviso responsivo; 29 pruebas aprobadas, 0 fallidas, typecheck y build correctos |
-
-Las 29 pruebas se desglosan en 26 simuladas y 3 E2E Chromium. Son resultados
-anteriores, no nuevas ejecuciones durante esta edición. Los PDF E2E son
-sintéticos; la emulación no valida dispositivos físicos, portapapeles,
-fidelidad con muestras variadas, calidad OCR general ni rendimiento con PDF extensos.
-
-Siguen pendientes la aprobación visual del aviso móvil y las validaciones
-indicadas en el [README](../README.md#límites-y-validaciones-pendientes). La versión
-declarada es `0.1.0`; v1.0.0 es una publicación futura sin fecha acordada.
-Las reglas de trabajo pertenecen a [AGENTS.md](../AGENTS.md). Las versiones de
-los documentos históricos siguientes no son versiones del producto.
-
----
-
-## Registro técnico del 27 de octubre de 2026 — histórico
-
-**Nota de contexto:** se conserva íntegro el registro anterior. Sus afirmaciones
-sobre 26 pruebas, ausencia de E2E, tema automático, pendientes y contenido del
-README describen aquel estado; no sustituyen el estado vigente ni autorizan
-nuevos trabajos. También se conserva la planificación original que lo sigue.
-
-El proyecto supera el esqueleto inicial: existen visor PDF, búsqueda, selección,
-copia, OCR y configuración PWA. La existencia de código no implica que todos los
-criterios de aceptación de la planificación histórica estén verificados.
-
-Esta sección describe el código y la evidencia disponibles. La planificación
-original se conserva íntegra más abajo como antecedente; sus entregables y reglas
-no constituyen evidencia de ejecución ni nuevos requisitos aprobados.
-
-### Arquitectura existente
-
-Aplicación de navegador con Vite y TypeScript, PDF.js para PDF y Tesseract.js para
-OCR, según `package.json`. No hay backend propio en el código revisado.
-
-| Ubicación | Responsabilidad actual |
-|---|---|
-| `index.html`, `src/main.ts` | Interfaz, eventos, conexión de sesiones y copia al portapapeles |
-| `src/styles.css` | Presentación, tema según preferencia del sistema y adaptación por tamaño de pantalla |
-| `src/domain/` | Reglas puras de paginación y búsqueda |
-| `src/application/pdf-session.ts` | Documento activo, navegación, zoom, búsqueda, caché de texto y preparación de página para OCR |
-| `src/application/ocr-session.ts` | Estado, progreso y ciclo de resultados OCR asociados al documento |
-| `src/infrastructure/pdf/` | Apertura con PDF.js, worker, renderizado, extracción, capa de texto y resaltados |
-| `src/infrastructure/ocr/engine.ts` | Worker OCR reutilizable, trabajos serializados y recursos locales en español |
-| `vite.config.ts`, `public/` | Configuración PWA, iconos y recursos OCR locales |
-| `tests/` | Pruebas automatizadas de dominio y sesiones con infraestructura simulada |
-
-La separación es por capas; las sesiones dependen directamente de infraestructura
-y de APIs del navegador. La estructura propuesta en el apartado histórico no es
-la estructura implementada ni una instrucción de reorganización.
-
-### Funcionalidades implementadas en código
-
-| Funcionalidad | Archivos que la sustentan | Alcance de la comprobación |
+| Bloque | Objetivo | Estado documentado |
 |---|---|---|
-| Abrir PDF local y cambiar de documento | `src/infrastructure/pdf/document.ts`, `src/application/pdf-session.ts` | Sesiones probadas con cargas simuladas; falta validación de lectura real con muestras |
-| Navegar, saltar de página, zoom y ajustes de ancho/página | `src/application/pdf-session.ts`, `src/main.ts` | Límites de navegación probados; fidelidad visual y zoom real pendientes |
-| Buscar, resaltar y recorrer coincidencias | `src/domain/search.ts`, `src/application/pdf-session.ts`, `src/infrastructure/pdf/renderer.ts` | Reglas y sesiones probadas; renderizado de resaltados simulado |
-| Volver a la página original al borrar búsqueda | `src/application/pdf-session.ts` | Probado incluso tras editar consulta o navegar manualmente; estado limpiado al cambiar o cerrar PDF |
-| Seleccionar y copiar texto | `src/infrastructure/pdf/renderer.ts`, `src/main.ts`, `src/styles.css` | Implementado; selección y portapapeles reales pendientes de validación |
-| OCR de una página en español, progreso, confianza, copia y descarte | `src/application/ocr-session.ts`, `src/infrastructure/ocr/engine.ts`, `src/main.ts` | Reinicio de resultado al cambiar de documento probado con OCR simulado; calidad OCR real pendiente |
-| PWA y recursos offline | `vite.config.ts`, `public/ocr/`, `public/icons/` | Compilación genera manifest y service worker; recorrido offline e instalación reales pendientes |
-| Adaptación móvil y tema automático | `src/styles.css` | Implementación parcial observable en CSS; compatibilidad y contraste pendientes |
+| 0. Identificación del problema | Identificar las dificultades al consultar y recuperar información de documentos PDF | Antecedentes registrados; mediciones de productividad pendientes |
+| 1. Requisitos y alcance | Delimitar las funciones del lector y sus restricciones | Alcance funcional implementado; no existe una matriz formal completa de trazabilidad |
+| 2. Diseño técnico | Definir arquitectura, herramientas y organización del proyecto | Arquitectura implementada y documentada |
+| 3. Desarrollo | Construir lectura PDF, navegación, búsqueda, OCR e interfaz | Funcionalidades principales implementadas |
+| 4. Validación | Comprobar funcionamiento, errores, navegación y uso offline | Pruebas automatizadas y verificaciones registradas; compatibilidad universal no acreditada |
+| 5. Despliegue y mantenimiento | Preparar distribución, actualizaciones y mantenimiento | Compilación PWA disponible; publicación oficial pendiente |
 
-La búsqueda ignora mayúsculas y distingue acentos (`src/domain/search.ts`). El
-texto OCR se presenta como resultado separado: no se incorpora a la búsqueda del
-PDF. Estas descripciones registran el comportamiento existente.
+Los estados anteriores reflejan el alcance documentado, no certificaciones externas ni requisitos adicionales de publicación.
 
-### Historial y verificaciones disponibles
+## Funcionalidades implementadas
 
-- Los seis commits anteriores a `6a7b570` registran la evolución desde el
-  esqueleto hasta la configuración PWA; el último de ellos es `fa43536`.
-- Commit `6a7b570`, en `mejoras`: **Corregir concurrencia y navegación PDF;
-  agregar pruebas automatizadas**. Incluye `src/application/pdf-session.ts` y
-  los tres archivos de prueba siguientes.
+PDF Studio Local incluye las siguientes capacidades:
 
-| Archivo | Pruebas aprobadas | Cobertura principal |
-|---|---:|---|
-| `tests/pdf-opening.test.mjs` | 6 | Apertura y cambio, aperturas inversas, liberación de cargas obsoletas, cierre lento y errores de apertura |
-| `tests/pdf-search-navigation.test.mjs` | 11 | Límites, coincidencias, recorrido circular, búsqueda vacía y retorno a la página original |
-| `tests/pdf-concurrency-errors.test.mjs` | 9 | Búsquedas y renders simultáneos, caché entre documentos, recuperación y estado ante errores |
-| **Total (`node --test`)** | **26** | **0 fallidas en la última ejecución registrada** |
+- Apertura y visualización de archivos PDF locales.
+- Navegación física, etiquetas editoriales y marcadores internos cuando existen.
+- Correspondencia puntual opcional entre una página física y su numeración editorial.
+- Zoom y ajustes de visualización.
+- Búsqueda, resaltado, selección y copia de texto.
+- Reconocimiento OCR de la página actual en español.
+- Diseño responsivo con temas Claro y Oscuro.
+- Funcionamiento como PWA con recursos preparados para uso sin conexión.
+- Actualizaciones de la aplicación mediante aviso y consentimiento del usuario.
+- Decodificación local de imágenes JPEG2000.
 
-Última verificación realizada durante las correcciones: Node.js `v24.21.0`,
-`node --test`, `npm run typecheck` y `npm run build` finalizaron correctamente.
-Este registro recoge ejecuciones anteriores; la actualización documental no
-supone una nueva ejecución. El cargador de pruebas utiliza transformación
-TypeScript en memoria mediante una API experimental de Node.
+Las características y sus limitaciones se describen en el [README](../README.md).
 
-**Límite de la evidencia:** las pruebas ejecutan lógica real de dominio y sesiones,
-pero sustituyen carga PDF, renderizado, extracción, OCR y elementos del navegador.
-No son E2E ni acreditan el funcionamiento de PDF.js o Tesseract.js con archivos
-reales. La comprobación de tipos y el build tampoco demuestran compatibilidad,
-calidad OCR ni funcionamiento offline.
+## Arquitectura
 
-### Validaciones y documentación pendientes
+La aplicación utiliza Vite, TypeScript, PDF.js y Tesseract.js, sin backend propio para procesar los documentos.
 
-- Fidelidad de visualización, zoom, selección y copia con PDF reales.
-- OCR en español comparado con transcripción revisada.
-- Instalación, preparación de cachés, actualización y recorrido sin conexión.
-- Documentos extensos, tiempos y memoria; dispositivos y navegadores reales,
-  adaptación móvil y contraste. No existen límites medidos documentados aquí.
-- Pruebas E2E: los archivos actuales de `tests/` no sustituyen `tests/e2e/`.
-- Los documentos de análisis, decisión, requisitos, trazabilidad, diseño,
-  verificación, uso y mantenimiento enumerados en la planificación original no
-  están presentes en `docs/`. Tampoco están las muestras propuestas, ADR ni una
-  matriz de compatibilidad. Se registran como ausencias, sin aprobar su creación.
-- `docs/01-problematica.md` existe como borrador con tablas sin completar y método
-  de observación sin entrevistas. Las entrevistas de la planificación histórica
-  no se consideran realizadas ni obligatorias por esta actualización.
-- El README documenta las 26 pruebas automatizadas aprobadas, su alcance simulado
-  y las correcciones del commit `6a7b570`. Distingue la configuración offline
-  implementada de la instalación y el recorrido sin conexión pendientes de
-  validación real; también reconoce el CSS móvil/temas existente y su validación
-  pendiente.
+El código se organiza principalmente en tres capas:
 
-Las referencias RF/RC del README no tienen definiciones en los documentos
-presentes. No se infiere su contenido ni se declara cerrado ningún bloque por
-la sola existencia de código. El siguiente trabajo debe acordarse sobre los
-pendientes anteriores, sin aplicar automáticamente el «Próximo paso» histórico.
+- `src/domain/`: reglas de búsqueda y paginación.
+- `src/application/`: coordinación de sesiones PDF y OCR.
+- `src/infrastructure/`: integración con los motores y recursos necesarios.
 
----
+La estructura completa, las responsabilidades y los flujos están documentados en [Arquitectura y mantenimiento](arquitectura.md).
 
-## Antecedentes y planificación original — histórico
+## Validación registrada
 
-**Nota de lectura:** todo el contenido que sigue se conserva sin cambios como
-planificación original. «Estado actual», «Próximo paso», casillas, estructura
-propuesta y reglas pertenecen a ese contexto anterior; no describen el estado
-vigente. La propuesta de 5–8 entrevistas también difiere de las tres entrevistas
-del cierre original y del método sin entrevistas de `01-problematica.md`.
+La última verificación documentada, correspondiente al **29 de octubre de 2026**, registra:
 
-**Versión:** 1.0 · **Fecha:** 27 de octubre de 2026
-**Estado actual:** Paso 1 completado (esqueleto Vite + TypeScript, UI base y selección de archivo). Sin lectura de PDF todavía.
+- **41 pruebas automatizadas aprobadas y ninguna fallida.**
+- Comprobación satisfactoria de tipos y compilación.
+- Pruebas E2E en Chromium, incluyendo lectura, búsqueda, OCR y funcionamiento offline.
+- Verificación de decodificación JPEG2000.
+- Revisión del diseño en distintos tamaños de pantalla y en ambos temas.
+- Aprobación visual del diseño actualizado por el usuario del proyecto.
 
----
+Estas evidencias corresponden a los entornos y documentos comprobados. No garantizan compatibilidad universal, rendimiento máximo ni precisión general del OCR.
 
-## Resumen
+Consultar [Validación técnica](validacion.md) para conocer los resultados, procedimientos, incidencias y limitaciones.
 
-| # | Bloque | Pregunta que responde | Entrega | Se cierra cuando |
-|---|---|---|---|---|
-| 0 | Descubrimiento y decisión | ¿El problema existe y merece la pena? | Problemática + análisis | Hay Go/No-Go escrito |
-| 1 | Requisitos y alcance | ¿Qué entra y cómo se verifica? | Alcance + requisitos | Cada requisito es verificable |
-| 2 | Diseño técnico y de interfaz | ¿Cómo se construye? | Diseño + decisiones + spikes | Decisiones justificadas y riesgos probados |
-| 3 | Construcción incremental | ¿Funciona por partes? | 9 incrementos demoables | Todo el alcance implementado |
-| 4 | Verificación integral | ¿Cumple lo especificado? | Informe de evidencia | Criterios de aceptación cumplidos |
-| 5 | Despliegue y mantenimiento | ¿Se puede usar y sostener? | Versión + guías | Usable en condiciones reales |
+## Aspectos pendientes de validación
 
----
+La documentación técnica identifica los siguientes límites:
 
-## Bloque 0 — Descubrimiento y decisión
+- Comportamiento en navegadores y dispositivos físicos todavía no evaluados.
+- Calidad OCR con una muestra representativa de documentos escaneados.
+- Rendimiento, memoria y uso prolongado con documentos de distintas características.
+- Conservación de recursos offline a largo plazo.
+- Ausencia de una medición concluyente de mejoras de productividad.
 
-**Objetivo:** confirmar el problema antes de invertir en producto.
+Estos puntos constituyen límites de evidencia, no requisitos nuevos ni cambios automáticamente autorizados.
 
-**Qué crear**
+## Preparación de la primera versión oficial
 
-- [ ] `docs/01-problematica.md` — 1 página: segmento, situación actual, problema en una frase, evidencia, impacto, límites.
-- [ ] `docs/02-analisis.md` — 3–5 páginas: causas, coste actual, alternativas, hipótesis, riesgos.
-- [ ] `docs/03-decision.md` — Go / No-Go / investigar más, con criterios.
-- [ ] `docs/pruebas/` — 3 PDF de muestra: texto, escaneado, mixto (sin datos personales).
-- [ ] Tabla de medición: minutos, pasos y errores de la tarea actual.
+PDF Studio Local conserva actualmente la versión `0.1.0`.
 
-**Actividades:** 5–8 entrevistas, observación de tareas, prueba de 2–3 alternativas existentes.
+Antes de anunciar una publicación oficial deben tomarse las decisiones correspondientes sobre la versión, el alojamiento y las condiciones de distribución.
 
-**Cierre:** decisión escrita. Si es No-Go, el proyecto se detiene aquí.
+La documentación de instalación y uso se mantiene en el [README](../README.md), mientras que los cambios relevantes se registran en [CHANGELOG.md](../CHANGELOG.md).
 
----
+## Historial y mantenimiento
 
-## Bloque 1 — Requisitos y alcance
+El historial Git conserva las etapas anteriores de construcción, decisiones y correcciones del proyecto.
 
-**Objetivo:** convertir la necesidad validada en requisitos verificables.
+Los documentos [Problemática](01-problematica.md) y [Mejoras](02-mejoras.md) mantienen las observaciones iniciales y las decisiones históricas.
 
-**Qué crear**
+Para futuras modificaciones:
 
-- [ ] `docs/04-alcance.md` — dentro / fuera de la primera versión.
-- [ ] `docs/05-requisitos.md` — RF y RC, cada uno con criterio de aceptación.
-- [ ] `docs/06-trazabilidad.md` — necesidad → requisito → prueba.
+- Consultar primero la documentación técnica vigente y el código correspondiente.
+- Distinguir hechos comprobados de hipótesis y propuestas.
+- Respetar el alcance aprobado y conservar las funcionalidades existentes.
+- Registrar las verificaciones pertinentes sin atribuir resultados de ejecuciones anteriores a nuevas versiones.
 
-**Reglas:** sin tecnología ni diseño; un requisito = una frase verificable.
-
-**Cierre:** el promotor valida que los requisitos reflejan la necesidad y que son comprobables.
-
----
-
-## Bloque 2 — Diseño técnico y de interfaz
-
-**Objetivo:** decidir cómo se construye y probar lo riesgoso antes de programar.
-
-**Qué crear**
-
-- [ ] `docs/07-diseno.md` — módulos, responsabilidades, flujo de datos y estados de error.
-- [ ] `docs/adr/` — una decisión por archivo (formato, stack, almacenamiento, offline).
-- [ ] Bocetos de escritorio y móvil.
-- [ ] Spikes con resultado medido: PDF de ~500 páginas, OCR real en español, memoria en móvil.
-- [ ] `docs/08-plan-pruebas.md` — qué se prueba, con qué y cómo.
-
-**Estructura de código propuesta** (a confirmar aquí):
-
-```
-src/
-  app/         arranque y estado general
-  pdf/         apertura, render, navegación, búsqueda, texto
-  ocr/         reconocimiento de una página
-  session/     documento activo y ciclo de resultados
-  ui/          controles, temas, accesibilidad
-  offline/     service worker y recursos
-```
-
-**Cierre:** diseño revisado y riesgos técnicos con evidencia.
-
----
-
-## Bloque 3 — Construcción incremental
-
-**Objetivo:** construir el producto por incrementos demoables.
-
-| # | Incremento | Se cierra cuando |
-|---|---|---|
-| 1 | Abrir PDF y renderizar página 1 | Se ve igual que el original |
-| 2 | Navegación y salto a página | Límites y entradas inválidas controlados |
-| 3 | Zoom y ajuste de visualización | No deforma el documento |
-| 4 | Búsqueda con siguiente/anterior | Acentos, mayúsculas y sin resultados |
-| 5 | Selección y copia | Texto pegado idéntico |
-| 6 | OCR de una página (español) | Comparado con transcripción revisada |
-| 7 | Resultados y descarte | No se mezclan documentos |
-| 8 | Funcionamiento sin conexión | Recorrido completo sin red |
-| 9 | Interfaz adaptable y temas | Móvil simulado y contraste |
-
-**Por cada incremento:** requisito asociado, pruebas, demo y commit.
-
-**Cierre:** todo el alcance implementado y con pruebas.
-
----
-
-## Bloque 4 — Verificación integral
-
-**Objetivo:** demostrar que se cumple lo especificado.
-
-**Qué crear**
-
-- [ ] Pruebas E2E del recorrido (`tests/e2e/`).
-- [ ] `docs/09-verificacion.md` — requisito → prueba → resultado → evidencia.
-- [ ] Tabla de límites medidos: tamaño máximo, páginas, tiempos, memoria.
-- [ ] Matriz de compatibilidad (equipo real vs. simulado).
-- [ ] Registro de defectos y correcciones.
-
-**Cierre:** criterios de aceptación cumplidos o desviación documentada y aprobada.
-
----
-
-## Bloque 5 — Despliegue y mantenimiento
-
-**Objetivo:** poner la versión en uso y sostenerla.
-
-**Qué crear**
-
-- [ ] Build de producción y versión etiquetada.
-- [ ] `docs/10-uso.md` — instalación, preparación inicial, límites y problemas conocidos.
-- [ ] `docs/11-mantenimiento.md` — actualizaciones, rollback, incidencias y dependencias.
-- [ ] Registro de licencias de terceros.
-
-**Cierre:** la versión se usa siguiendo las instrucciones, dentro de las condiciones verificadas.
-
----
-
-## Reglas comunes
-
-1. Ningún bloque avanza sin validación del anterior.
-2. Todo cambio de alcance entra como propuesta escrita.
-3. Cada requisito tiene una prueba y una evidencia.
-4. No se declara compatibilidad, rendimiento o capacidad sin medirlo.
-5. La planificación vive dentro de cada bloque; no es un bloque aparte.
-
----
-
-## Próximo paso
-
-Terminar el **Bloque 0**: tres entrevistas, tres PDF de muestra y la decisión Go/No-Go. El esqueleto de código ya existe; no se amplía hasta que el problema esté validado.
+Las instrucciones específicas para Codex se encuentran en [AGENTS.md](../AGENTS.md).
