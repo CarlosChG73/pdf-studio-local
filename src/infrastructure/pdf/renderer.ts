@@ -1,3 +1,4 @@
+// Adaptador PDF.js: canvas, capa de texto, extracción, resaltados e imagen independiente para OCR.
 import { TextLayer, Util } from 'pdfjs-dist';
 import type { PDFDocumentProxy, PDFPageProxy, RenderTask } from 'pdfjs-dist';
 import type { TextRange } from '../../domain/search';

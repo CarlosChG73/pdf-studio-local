@@ -1,6 +1,19 @@
 # Bloques de desarrollo — Proyecto PDF
 
-## Estado vigente — 28 de octubre de 2026
+## Estado vigente — 29 de octubre de 2026
+
+La navegación editorial, los marcadores internos, la equivalencia puntual y los
+decodificadores locales están descritos en el [README](../README.md). La guía de
+[arquitectura](arquitectura.md) documenta el código propio y sus límites; el
+[registro de validación](validacion.md) recoge ejecuciones nuevas, mediciones y
+pendientes. No se añaden requisitos ni se declara publicada v1.0.0.
+
+Los apartados siguientes se conservan como registro histórico; sus recuentos de
+26/29 pruebas no describen por sí solos la suite actual. La búsqueda OCR global
+y la conservación de documentos entre sesiones no forman parte del alcance
+confirmado para este cierre.
+
+## Registro histórico — 28 de octubre de 2026
 
 Registro técnico interno. La guía pública, las funciones, los comandos, la
 preparación offline y la tabla de pruebas se mantienen en [README.md](../README.md);

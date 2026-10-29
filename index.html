@@ -1,4 +1,5 @@
 <!doctype html>
+<!-- Estructura accesible del visor; los ID conectan los controles con src/main.ts. -->
 <html lang="es">
   <head>
     <meta charset="UTF-8" />
@@ -6,18 +7,18 @@
     <meta name="theme-color" content="#1a56db" />
     <meta
       name="description"
-      content="Lector local de PDF con navegación, búsqueda, selección de texto y OCR. Nada sale del dispositivo."
+      content="PDF Studio Local: consulta, búsqueda y OCR de PDF en el dispositivo, sin subir documentos a un servicio externo."
     />
     <link rel="icon" href="/icons/favicon-32.png" sizes="32x32" />
     <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
-    <title>Proyecto PDF</title>
+    <title>PDF Studio Local</title>
   </head>
   <body>
     <header class="app-header">
       <button id="tools-toggle" type="button" aria-controls="tools-panel" aria-expanded="true" aria-label="Ocultar herramientas" title="Herramientas">
         <span aria-hidden="true">☰</span>
       </button>
-      <h1>Proyecto PDF</h1>
+      <h1>PDF Studio Local</h1>
       <div id="appearance-control" class="appearance-control">
         <button id="appearance-toggle" class="appearance-switch" type="button" role="switch" aria-checked="false" aria-label="Modo oscuro" title="Apariencia: Claro">
           <span class="appearance-track" aria-hidden="true">
@@ -82,6 +83,28 @@
             &#8250;
           </button>
         </div>
+
+        <label id="page-label-control" class="controls page-label-control" hidden>
+          <span class="page-total">Editorial</span>
+          <input id="page-label" class="page-input" type="text"
+            aria-label="Etiqueta editorial de página" autocomplete="off" disabled />
+        </label>
+
+        <details id="pdf-outline" class="navigation-details" hidden>
+          <summary>Capítulos y secciones</summary>
+          <ul id="pdf-outline-list" class="outline-list" aria-label="Marcadores internos"></ul>
+        </details>
+
+        <details id="manual-pagination" class="navigation-details" hidden>
+          <summary>Esta página del libro es…</summary>
+          <form id="manual-pagination-form">
+            <label>Número del libro <input id="manual-editorial-start" class="page-input" type="number" min="1" step="1" required /></label>
+            <p class="navigation-note">Equivalencia puntual. No afecta a otras páginas.</p>
+            <button id="manual-pagination-apply" type="submit">Guardar equivalencia</button>
+            <button id="manual-pagination-clear" type="button" disabled>Quitar correspondencia</button>
+          </form>
+          <p id="manual-pagination-status" class="navigation-note" role="status">Sin correspondencia manual.</p>
+        </details>
 
         <div class="controls" role="group" aria-label="Zoom">
           <button id="zoom-out" type="button" disabled aria-label="Reducir">−</button>

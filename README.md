@@ -4,6 +4,9 @@ Lector de PDF locales con navegación, búsqueda, selección, copia y OCR en esp
 Los documentos se procesan en el dispositivo, sin enviarlos a un servicio de
 lectura u OCR externo.
 
+MVP funcional para una evaluación controlada de consulta y recuperación de
+información. Las limitaciones y el alcance comprobado se detallan más abajo.
+
 **Estado:** versión de desarrollo `0.1.0`. La futura primera versión oficial
 `v1.0.0` está en preparación; no se anuncia su publicación ni una fecha.
 Los cambios disponibles se describen en [CHANGELOG.md](CHANGELOG.md).
@@ -12,6 +15,11 @@ Los cambios disponibles se describen en [CHANGELOG.md](CHANGELOG.md).
 
 - Abrir y cambiar PDF locales; navegar, introducir un número de página, cambiar
   zoom y ajustar al ancho o a la página completa.
+- Navegar por etiquetas editoriales y marcadores internos cuando el PDF los
+  contenga. La posición física permanece disponible; las etiquetas ambiguas
+  muestran un aviso y no eligen una página arbitrariamente.
+- Registrar una equivalencia puntual entre la página actual del PDF y su número
+  en el libro, sin aplicar desplazamientos a otras páginas.
 - Buscar, resaltar y recorrer coincidencias. La búsqueda ignora mayúsculas y
   distingue acentos. Borrarla restaura la página original, aunque se haya
   navegado manualmente durante la búsqueda.
@@ -72,6 +80,19 @@ no se presenta como configuración de alojamiento público.
    de origen.
 4. Seleccionar texto y pulsar **Copiar texto**; sin selección, se obtiene el texto
    de la página actual. El acceso al portapapeles depende del navegador.
+
+El campo numérico indica la posición física, empezando por la primera página
+del PDF. **Editorial** permite introducir una etiqueta definida por el documento;
+no se deduce del número impreso. **Capítulos y secciones** aparece solo si hay
+marcadores. Sus entradas internas abren la página de destino, conservando el zoom;
+no se ejecutan enlaces externos ni se aplica el posicionamiento exacto del destino.
+
+Tras localizar una página, abrir **Esta página del libro es…**, introducir su
+número entero positivo, revisar la equivalencia y pulsar **Guardar equivalencia**.
+Se conserva una única equivalencia durante la sesión, utilizable desde
+**Editorial**; **Quitar correspondencia** la elimina. No renumera el PDF ni las
+páginas vecinas. Si contradice una etiqueta y hay dos destinos, se informa de
+ambigüedad. Cambiar de documento elimina estos datos.
 
 Tab y Shift+Tab recorren controles. Los botones admiten teclado; Escape cierra
 las ayudas o el menú según el contexto. Las ayudas flotantes se utilizan en
@@ -143,20 +164,27 @@ y [comprobaciones periódicas](https://vite-pwa-org.netlify.app/guide/periodic-s
 
 ## Verificación
 
-Resultado registrado con Node.js 24.21.0: **29 pruebas aprobadas, 0 fallidas**;
-`npm run typecheck` y `npm run build` correctos. Son ejecuciones anteriores;
-esta edición documental no constituye una nueva ejecución.
+La suite actual contiene **41 pruebas**: 34 de sesiones/dominio con infraestructura
+simulada, 3 de carga/liberación y 4 E2E Chromium. Los resultados fechados,
+correcciones y mediciones se registran en [Validación](docs/validacion.md).
+No constituyen una garantía de compatibilidad universal ni de exactitud OCR.
+
+Última verificación, **29 de octubre de 2026**: **41 aprobadas, 0 fallidas**;
+`npm run typecheck` y `npm run build` correctos con Node.js 24.21.0.
 
 | Archivo | Pruebas | Alcance |
 |---|---:|---|
 | `tests/pdf-opening.test.mjs` | 6 | Apertura, cambio, cargas obsoletas y errores |
-| `tests/pdf-search-navigation.test.mjs` | 11 | Límites, coincidencias y restauración al borrar búsqueda |
+| `tests/pdf-search-navigation.test.mjs` | 19 | Búsqueda, navegación física/editorial, marcadores y equivalencia puntual |
 | `tests/pdf-concurrency-errors.test.mjs` | 9 | Concurrencia, caché de texto y recuperación |
+| `tests/pdf-document.test.mjs` | 3 | Liberación tras errores de carga y apertura posterior; contraseña simulada |
 | `tests/e2e/offline.test.mjs` | 1 | PDF.js, búsqueda y OCR reales online y offline con servidor detenido |
 | `tests/e2e/update.test.mjs` | 2 | Migración, varias pestañas, consentimiento, aviso móvil y PDF/OCR offline |
+| `tests/e2e/pdf-decoders.test.mjs` | 1 | JPEG2000 real, OpenJPEG local, alternativa JavaScript y offline |
 
-Las primeras 26 pruebas usan infraestructura simulada. Las 3 E2E utilizan
-Chromium real y PDF sintéticos sin datos personales. La emulación móvil no
+Las pruebas de sesiones sustituyen carga, renderizado y OCR. Las de carga usan
+PDF.js real para PDF válido/inválido y una contraseña simulada. Las 4 E2E utilizan
+Chromium real, PDF sintéticos y una muestra JPEG2000 oficial de Mozilla. La emulación móvil no
 equivale a dispositivos físicos. El aviso se comprobó en ambos temas y en
 393×852 y 320×240, con herramientas abiertas/cerradas, teclado y cierre.
 
@@ -197,7 +225,7 @@ npm run build
 node --test
 ```
 
-Para ejecutar solo las 26 pruebas con infraestructura simulada:
+Para ejecutar solo las 34 pruebas de sesiones/dominio con infraestructura simulada:
 
 ```bash
 node --test tests/pdf-opening.test.mjs tests/pdf-search-navigation.test.mjs tests/pdf-concurrency-errors.test.mjs
@@ -211,8 +239,20 @@ node --test tests/pdf-opening.test.mjs tests/pdf-search-navigation.test.mjs test
 - Fidelidad visual, selección y portapapeles con muestras variadas de PDF reales;
   calidad OCR comparada con transcripciones revisadas.
 - Rendimiento, memoria y límites de tamaño/páginas con documentos extensos.
-  No hay máximos medidos ni mejoras de productividad demostradas.
+  Hay mediciones puntuales con un PDF público de 1.310 páginas; no establecen
+  máximos admitidos ni mejoras de productividad. Ver [Validación](docs/validacion.md).
 - Conservación de cachés a largo plazo y condiciones de almacenamiento de cada navegador.
+- La portada del PDF original de 764 páginas requiere comparación visual con
+  ese archivo; OpenJPEG se verificó con una muestra oficial distinta.
+- La revisión npm del 29 de octubre detectó cuatro avisos bajos en una cadena de
+  herramientas de compilación y cero avisos en dependencias de producción.
+  No se aplicaron degradaciones ni cambios de paquetes; ver el alcance y el
+  seguimiento en [Validación](docs/validacion.md#dependencias-hallazgo-conocido-de-compilación).
+
+La búsqueda recorre el texto original del PDF, no los resultados OCR. No se
+procesan automáticamente todas las páginas escaneadas. Los documentos, resultados
+OCR y equivalencias manuales siguen en memoria: no hay recuperación tras recargar.
+Estas son limitaciones conocidas del alcance actual, no funciones ocultas.
 
 ## Arquitectura y documentación
 
@@ -221,6 +261,15 @@ propio. `src/domain/` contiene búsqueda y paginación; `src/application/`, sesi
 PDF/OCR; `src/infrastructure/`, integración de motores. `index.html`, `src/main.ts`
 y `src/styles.css` conectan y presentan la interfaz. `vite.config.ts` configura
 la PWA y `public/` contiene iconos y recursos OCR.
+
+`public/pdfjs/wasm/` contiene OpenJPEG y su alternativa JavaScript, copiados de
+`pdfjs-dist@6.4.299`, con sus licencias. Se sirven localmente y se precachean para
+decodificar JPEG2000 offline. No se ha añadido un perfil ICC externo.
+Las pruebas comprueban que los dos decodificadores coinciden con la dependencia
+instalada; una actualización futura debe revisar también esas copias.
+
+La [guía de arquitectura](docs/arquitectura.md) explica la responsabilidad de
+cada archivo propio, los flujos de ejecución y las comprobaciones de mantenimiento.
 
 El README es la guía pública de instalación y uso; el [changelog](CHANGELOG.md)
 resume cambios para usuarios. `AGENTS.md` contiene instrucciones internas para

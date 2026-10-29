@@ -1,3 +1,4 @@
+// Recorre PDF, búsqueda y OCR reales; después repite sin red y con el servidor detenido.
 // Prerequisite: npm run build
 // Run: node --test tests/e2e/offline.test.mjs
 // One end-to-end test using real PDF.js, OCR and a synthetic non-personal PDF.

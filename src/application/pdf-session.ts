@@ -1,5 +1,9 @@
+// Coordina el documento activo, navegación, búsqueda y renderizado; descarta trabajo obsoleto.
 import type { PDFDocumentLoadingTask, PDFDocumentProxy, RenderTask } from 'pdfjs-dist';
-import { clampPage } from '../domain/pagination';
+import {
+  clampPage, editorialToPhysical, physicalToEditorial, validEditorialReference,
+  type EditorialPageReference,
+} from '../domain/pagination';
 import { findMatchRanges } from '../domain/search';
 import { openPdf } from '../infrastructure/pdf/document';
 import {
@@ -15,6 +19,7 @@ import {
 } from '../infrastructure/pdf/renderer';
 
 export type ZoomMode = 'fit-width' | 'fit-page' | 'manual';
+export type PdfBookmark = Awaited<ReturnType<PDFDocumentProxy['getOutline']>>[number];
 
 export interface SearchMatch {
   page: number;
@@ -26,6 +31,11 @@ export interface SessionState {
   fileName: string | null;
   pages: number;
   page: number;
+  pageLabel: string | null;
+  hasPageLabels: boolean;
+  manualReference: EditorialPageReference | null;
+  manualPageLabel: string | null;
+  outline: PdfBookmark[];
   zoom: number;
   mode: ZoomMode;
   busy: boolean;
@@ -59,6 +69,10 @@ export class PdfSession {
   private searchGeneration = 0;
   private fileName: string | null = null;
   private page = 1;
+  private pageLabels: string[] | null = null;
+  private manualReference: EditorialPageReference | null = null;
+  private outline: PdfBookmark[] = [];
+  private navigationGeneration = 0;
   private mode: ZoomMode = 'fit-width';
   private manualZoom = 1;
   private zoom = 1;
@@ -95,6 +109,12 @@ export class PdfSession {
       fileName: this.fileName,
       pages: this.pageCount,
       page: this.page,
+      pageLabel: this.pageLabels?.[this.page - 1] || null,
+      hasPageLabels: this.pageLabels !== null,
+      manualReference: this.manualReference ? { ...this.manualReference } : null,
+      manualPageLabel: physicalToEditorial(this.page, this.manualReference) !== null
+        ? String(physicalToEditorial(this.page, this.manualReference)) : null,
+      outline: this.outline,
       zoom: this.zoom,
       mode: this.mode,
       busy: this.busy,
@@ -130,6 +150,25 @@ export class PdfSession {
       }
 
       this.loadingTask = task;
+      // Labels are optional metadata: failure must not prevent physical navigation.
+      let labels: string[] | null = null;
+      try {
+        labels = await document.getPageLabels?.() ?? null;
+      } catch (error) {
+        if (token === this.documentToken) console.warn('No se pudieron leer las etiquetas de página.', error);
+      }
+      if (token !== this.documentToken) return;
+      let outline: PdfBookmark[] | null = null;
+      try {
+        outline = await document.getOutline?.() ?? null;
+      } catch (error) {
+        if (token === this.documentToken) console.warn('No se pudieron leer los marcadores.', error);
+      }
+      if (token !== this.documentToken) return;
+      this.outline = Array.isArray(outline) ? outline : [];
+      this.pageLabels = Array.isArray(labels) && labels.length === document.numPages
+        && labels.every(label => typeof label === 'string')
+        && labels.some(label => label.trim().length > 0) ? [...labels] : null;
       this.document = document;
       this.fileName = file.name;
       this.page = 1;
@@ -148,6 +187,7 @@ export class PdfSession {
     this.renderGeneration += 1;
     this.searchGeneration += 1;
     this.documentToken += 1;
+    this.navigationGeneration += 1;
     const token = this.documentToken;
     this.renderTask?.cancel();
     this.renderTask = null;
@@ -157,6 +197,9 @@ export class PdfSession {
     this.document = null;
     this.fileName = null;
     this.page = 1;
+    this.pageLabels = null;
+    this.manualReference = null;
+    this.outline = [];
     this.busy = false;
     this.searching = false;
     this.query = '';
@@ -177,6 +220,7 @@ export class PdfSession {
   }
 
   async goToPage(pageNumber: number): Promise<void> {
+    this.navigationGeneration += 1;
     if (!this.document) return;
 
     const target = clampPage(pageNumber, this.pageCount);
@@ -189,6 +233,65 @@ export class PdfSession {
     this.page = target;
     this.scroller.scrollTop = 0;
     await this.render();
+  }
+
+  async goToPageLabel(label: string): Promise<'navigated' | 'not-found' | 'ambiguous' | 'unavailable'> {
+    this.navigationGeneration += 1;
+    if (!this.pageLabels && !this.manualReference) return 'unavailable';
+    const value = label.trim();
+    if (!value) return 'not-found';
+    const targets = new Set<number>();
+    for (let index = 0; index < (this.pageLabels?.length ?? 0); index += 1) {
+      if (this.pageLabels?.[index]?.trim() === value) targets.add(index + 1);
+    }
+    const manualTarget = editorialToPhysical(value, this.manualReference);
+    if (manualTarget !== null) targets.add(manualTarget);
+    if (targets.size > 1) return 'ambiguous';
+    const target = targets.values().next().value;
+    if (target === undefined) return 'not-found';
+    await this.goToPage(target);
+    return 'navigated';
+  }
+
+  setManualPageNumber(editorialPage: number | null): boolean {
+    if (!this.document || this.busy) return false;
+    const reference = editorialPage === null ? null : { physicalPage: this.page, editorialPage };
+    if (reference && !validEditorialReference(reference, this.pageCount)) return false;
+    this.manualReference = reference;
+    this.emit();
+    return true;
+  }
+
+  async goToDestination(destination: unknown, token = this.documentToken): Promise<'navigated' | 'invalid' | 'obsolete'> {
+    const document = this.document;
+    if (!document || token !== this.documentToken) return 'obsolete';
+    const generation = ++this.navigationGeneration;
+    const obsolete = () => token !== this.documentToken || generation !== this.navigationGeneration;
+    try {
+      const explicit = typeof destination === 'string'
+        ? await document.getDestination(destination) : destination;
+      if (obsolete()) return 'obsolete';
+      if (!Array.isArray(explicit) || explicit.length < 2) return 'invalid';
+      const fit = explicit[1];
+      if (!fit || typeof fit !== 'object'
+        || !['XYZ', 'Fit', 'FitH', 'FitV', 'FitR', 'FitB', 'FitBH', 'FitBV'].includes(fit.name)) return 'invalid';
+      const reference: unknown = explicit[0];
+      let index: number;
+      if (typeof reference === 'number' && Number.isInteger(reference)) index = reference;
+      else if (reference && typeof reference === 'object'
+        && 'num' in reference && 'gen' in reference
+        && Number.isInteger(reference.num) && Number.isInteger(reference.gen)
+        && Number(reference.num) >= 0 && Number(reference.gen) >= 0) {
+        index = await document.getPageIndex(reference as { num: number; gen: number });
+      } else return 'invalid';
+      if (obsolete()) return 'obsolete';
+      if (!Number.isInteger(index) || index < 0 || index >= document.numPages) return 'invalid';
+      await this.goToPage(index + 1);
+      return token === this.documentToken ? 'navigated' : 'obsolete';
+    } catch (error) {
+      if (obsolete()) return 'obsolete';
+      throw error;
+    }
   }
 
   async zoomIn(): Promise<void> {

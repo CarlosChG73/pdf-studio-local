@@ -1,3 +1,6 @@
 # Recursos de OCR generados (worker, núcleos WASM y modelo): se guardan tal cual,
 # sin normalizar saltos de línea.
 public/ocr/** -text
+
+# Decodificadores PDF.js y licencias de terceros: conservar los bytes originales.
+public/pdfjs/wasm/** -text

@@ -10,5 +10,6 @@
 - No instalar dependencias, realizar commits, push ni operaciones externas sin autorización.
 - Verificar cambios autorizados mediante `node --test`, `npm run typecheck` y `npm run build`, según corresponda.
 - Referencia registrada en `5474919`: 29 pruebas aprobadas (26 con infraestructura simulada y 3 E2E Chromium), typecheck y build correctos. Ver alcance en README.md; no acreditan compatibilidad universal ni rendimiento. La aprobación visual definitiva del aviso compacto móvil sigue pendiente.
+- Ese resultado es histórico. Para el estado posterior, consultar `docs/validacion.md` y `docs/arquitectura.md`; no trasladar resultados antiguos a una ejecución nueva ni dar pendientes humanos por aprobados.
 - Informar fallos; no corregirlos fuera del alcance autorizado.
 - No crear ni modificar archivos fuera de la carpeta del proyecto ni ejecutar operaciones sobre recursos externos sin autorización explícita. No acceder a información ajena al proyecto.

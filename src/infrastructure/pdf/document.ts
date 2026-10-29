@@ -1,3 +1,4 @@
+// Abre PDF locales, configura OpenJPEG y libera las cargas que terminan con error.
 import './worker';
 import { getDocument } from 'pdfjs-dist';
 import type { PDFDocumentLoadingTask, PDFDocumentProxy } from 'pdfjs-dist';
@@ -9,10 +10,19 @@ export interface OpenedPdf {
 
 export async function openPdf(file: File): Promise<OpenedPdf> {
   const data = new Uint8Array(await file.arrayBuffer());
-  const task = getDocument({ data });
-  const document = await task.promise;
+  const task = getDocument({
+    data,
+    // Resolve from the app URL, not the worker URL; keep the trailing slash.
+    wasmUrl: new URL('./pdfjs/wasm/', globalThis.document?.baseURI ?? import.meta.url).href,
+  });
 
-  return { task, document };
+  try {
+    const document = await task.promise;
+    return { task, document };
+  } catch (error) {
+    await task.destroy();
+    throw error;
+  }
 }
 
 export function describePdfError(error: unknown): string {

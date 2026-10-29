@@ -11,6 +11,23 @@ está en preparación; no se ha publicado ni se le asigna una fecha aquí.
 
 ### Added
 
+- Navegación por etiquetas editoriales con detección de ambigüedad y posición
+  física siempre disponible.
+- Marcadores internos plegables con resolución de destinos por nombre,
+  referencia o índice físico.
+- Equivalencia puntual «Esta página del libro es…», con vista previa y guardado
+  explícito, sin extrapolar a otras páginas.
+- OpenJPEG local y su alternativa JavaScript para imágenes JPEG2000 en
+  desarrollo, producción y offline, con licencias de los recursos.
+- Guías de arquitectura y validación, medición reproducible con muestras públicas
+  y comentarios de responsabilidad en el código propio.
+- Revisión adicional del MVP en cinco tamaños y ambos temas, con registro de
+  contraste, teclado y avisos conocidos de las dependencias de compilación.
+
+### Changed
+
+- Nombre visible unificado como PDF Studio Local en la pestaña, cabecera y manifest PWA.
+
 - Visor de PDF locales con navegación, salto de página, zoom y ajustes de ancho o
   página completa.
 - Búsqueda con resaltados y recorrido de coincidencias, selección y copia de texto.
@@ -24,6 +41,12 @@ está en preparación; no se ha publicado ni se le asigna una fecha aquí.
   recorridos E2E de actualización y funcionamiento offline en Chromium.
 
 ### Fixed
+
+- Liberación de la tarea de carga PDF.js cuando falla la apertura del documento.
+- Sincronización de la comprobación E2E de migración: espera acotada del worker
+  instalado, verificando que el controlador antiguo y la sesión siguen intactos.
+- Restauración del foco fuera del aviso de actualización móvil después del cierre
+  nativo del diálogo.
 
 - Las aperturas simultáneas conservan el último PDF seleccionado y liberan cargas
   obsoletas.

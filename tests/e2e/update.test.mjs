@@ -1,3 +1,4 @@
+// Comprueba migración PWA, consentimiento por pestaña y conservación del OCR offline en un origen aislado.
 // Prerequisite: npm run build. All browser/build artifacts stay in node_modules/.cache.
 // Real Chromium/SW/PDF.js/OCR; an isolated origin never touches the installed PWA.
 import test from 'node:test';
@@ -143,6 +144,8 @@ test('PWA: migrar desde a91ac75 autoUpdate sin recargas ni pérdida de OCR offli
   const firstTime = await first.evaluate(() => performance.timeOrigin);
   const secondTime = await second.evaluate(() => performance.timeOrigin);
 
+  const secondController = await second.evaluateHandle(() => navigator.serviceWorker.controller);
+
   site.deploy(join(root, 'dist'));
   await requestUpdate(first);
   // Observe an actual waiting worker, then continue both PDF sessions.
@@ -150,7 +153,16 @@ test('PWA: migrar desde a91ac75 autoUpdate sin recargas ni pérdida de OCR offli
   await sameDocument(second, secondTime);
   await first.close();
   await sameDocument(second, secondTime);
-  assert.equal(await second.evaluate(async () => Boolean((await navigator.serviceWorker.getRegistration()).waiting)), true);
+  // La instalación se observa por pestaña de forma asíncrona. Esperar no debe
+  // ocultar una activación anticipada: el controlador original debe seguir activo.
+  await expect.poll(() => second.evaluate(async originalController => {
+    const registration = await navigator.serviceWorker.getRegistration();
+    return { waiting: registration?.waiting?.state === 'installed',
+      sameController: navigator.serviceWorker.controller === originalController };
+  }, secondController), { timeout: 15_000, message: 'Worker en espera sin sustituir el controlador antiguo' })
+    .toEqual({ waiting: true, sameController: true });
+  await secondController.dispose();
+  await sameDocument(second, secondTime);
   // The legacy shell has no update UI: closing ALL legacy clients activates
   // the prompt worker naturally. This one-time handoff needs no DevTools.
   await second.close();
@@ -273,8 +285,8 @@ test('PWA: aviso, aplazamiento y consentimiento por pestaña; actualización y O
       assert.ok(Math.abs(restoredViewer.height - reducedViewer.height - strip.height) < 2,
         'Cerrar o aplazar recupera toda la altura reservada');
       await sameDocument(mobile, originalTime);
-      assert.equal(await mobile.evaluate(() => Boolean(document.activeElement?.closest('#pwa-update'))), false,
-        'El foco no queda dentro del aviso oculto');
+      await expect.poll(() => mobile.evaluate(() => Boolean(document.activeElement?.closest('#pwa-update'))),
+        { message: 'Tras el cierre nativo, el foco no queda dentro del aviso oculto' }).toBe(false);
       await mobile.close();
     }
   }

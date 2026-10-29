@@ -1,3 +1,4 @@
+// Reglas de búsqueda de texto; no dependen del visor, PDF.js ni OCR.
 export interface TextRange {
   start: number;
   end: number;

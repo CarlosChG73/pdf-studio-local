@@ -1,7 +1,8 @@
+// Conecta la interfaz con las sesiones PDF/OCR; también controla temas, ayudas y avisos PWA.
 import './styles.css';
 import { registerSW } from 'virtual:pwa-register';
 import { OcrSession, type OcrState } from './application/ocr-session';
-import { PdfSession, type SessionState } from './application/pdf-session';
+import { PdfSession, type PdfBookmark, type SessionState } from './application/pdf-session';
 import { describePdfError } from './infrastructure/pdf/document';
 
 function requireElement<T extends Element>(selector: string): T {
@@ -270,6 +271,81 @@ const prevButton = requireElement<HTMLButtonElement>('#prev-page');
 const nextButton = requireElement<HTMLButtonElement>('#next-page');
 const pageInput = requireElement<HTMLInputElement>('#page-number');
 const pageTotal = requireElement<HTMLSpanElement>('#page-total');
+const pageLabelControl = requireElement<HTMLLabelElement>('#page-label-control');
+const pageLabelInput = requireElement<HTMLInputElement>('#page-label');
+const outlinePanel = requireElement<HTMLDetailsElement>('#pdf-outline');
+const outlineList = requireElement<HTMLUListElement>('#pdf-outline-list');
+const manualPanel = requireElement<HTMLDetailsElement>('#manual-pagination');
+const manualForm = requireElement<HTMLFormElement>('#manual-pagination-form');
+const manualEditorialStart = requireElement<HTMLInputElement>('#manual-editorial-start');
+const manualApply = requireElement<HTMLButtonElement>('#manual-pagination-apply');
+const manualClear = requireElement<HTMLButtonElement>('#manual-pagination-clear');
+const manualStatus = requireElement<HTMLParagraphElement>('#manual-pagination-status');
+let navigationToken = -1;
+let manualDraftPage = 0;
+let renderedOutline: PdfBookmark[] | null = null;
+
+function appendBookmarks(parent: HTMLUListElement, items: PdfBookmark[], token: number): void {
+  // Los títulos se insertan como texto; no se ejecutan acciones o enlaces externos del PDF.
+  for (const item of items) {
+    const row = document.createElement('li');
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.textContent = item.title || 'Sin título';
+    button.disabled = !item.dest;
+    button.addEventListener('click', async () => {
+      if (token !== session.state.token) return;
+      try {
+        const result = await session.goToDestination(item.dest, token);
+        if (result === 'invalid' && token === session.state.token) {
+          showNotice('El marcador no tiene un destino interno válido.', 6000);
+        }
+      } catch {
+        if (token === session.state.token) showNotice('No se pudo abrir el destino del marcador.', 6000);
+      }
+    });
+    row.append(button);
+    if (Array.isArray(item.items) && item.items.length > 0) {
+      const children = document.createElement('ul');
+      appendBookmarks(children, item.items, token);
+      row.append(children);
+    }
+    parent.append(row);
+  }
+}
+
+function renderNavigation(state: SessionState): void {
+  if (navigationToken !== state.token || manualDraftPage !== state.page) manualForm.reset();
+  manualDraftPage = state.page;
+  if (navigationToken !== state.token) {
+    navigationToken = state.token;
+    manualForm.reset();
+    manualPanel.open = false;
+    outlinePanel.open = false;
+  }
+  if (renderedOutline !== state.outline) {
+    renderedOutline = state.outline;
+    outlineList.replaceChildren();
+    appendBookmarks(outlineList, state.outline, state.token);
+  }
+  outlinePanel.hidden = state.outline.length === 0;
+  manualPanel.hidden = state.pages === 0;
+  manualEditorialStart.disabled = state.pages === 0 || state.busy;
+  manualApply.disabled = state.pages === 0 || state.busy;
+  manualClear.disabled = state.manualReference === null || state.busy;
+  renderManualPreview(state);
+}
+
+function renderManualPreview(state: SessionState): void {
+  // Una vista previa no guarda datos: solo el envío del formulario confirma esta página.
+  const value = manualEditorialStart.valueAsNumber;
+  const reference = state.manualReference;
+  manualStatus.textContent = Number.isSafeInteger(value) && value >= 1
+    ? `Vista previa: Página ${value} del libro = página ${state.page} del PDF. Sin guardar.`
+    : reference
+    ? `Guardada: Página ${reference.editorialPage} del libro = página ${reference.physicalPage} del PDF.`
+    : 'Sin correspondencia manual.';
+}
 
 const zoomOutButton = requireElement<HTMLButtonElement>('#zoom-out');
 const zoomInButton = requireElement<HTMLButtonElement>('#zoom-in');
@@ -379,6 +455,7 @@ function renderOcr(state: OcrState): void {
 
 function render(state: SessionState): void {
   ocr.setDocument(state.token);
+  renderNavigation(state);
 
   const hasDocument = state.pages > 0;
   const idle = hasDocument && !state.busy;
@@ -386,6 +463,11 @@ function render(state: SessionState): void {
   prevButton.disabled = !idle || state.page <= 1;
   nextButton.disabled = !idle || state.page >= state.pages;
   pageInput.disabled = !hasDocument || state.busy;
+  const hasEditorial = state.hasPageLabels || state.manualReference !== null;
+  pageLabelControl.hidden = !hasEditorial;
+  pageLabelInput.disabled = !hasDocument || state.busy;
+  if (!state.busy) pageLabelInput.value = state.pageLabel ?? state.manualPageLabel ?? '';
+  pageInput.setAttribute('aria-label', hasEditorial ? 'Número físico de página PDF' : 'Número de página');
 
   zoomOutButton.disabled = !idle || state.zoom <= 0.25;
   zoomInButton.disabled = !idle || state.zoom >= 4;
@@ -402,7 +484,7 @@ function render(state: SessionState): void {
   if (hasDocument) {
     pageInput.max = String(state.pages);
     if (!state.busy) pageInput.value = String(state.page);
-    pageTotal.textContent = `de ${state.pages}`;
+    pageTotal.textContent = hasEditorial ? `PDF · de ${state.pages}` : `de ${state.pages}`;
     zoomLevel.textContent = `${Math.round(state.zoom * 100)} %`;
     matchCount.textContent =
       state.matches > 0 ? `${state.matchIndex + 1}/${state.matches}` : '—';
@@ -509,6 +591,44 @@ pageInput.addEventListener('keydown', (event) => {
     event.preventDefault();
     commitPage();
   }
+});
+
+const commitPageLabel = async (): Promise<void> => {
+  const token = session.state.token;
+  try {
+    const result = await session.goToPageLabel(pageLabelInput.value);
+    if (token !== session.state.token) return;
+    pageLabelInput.value = session.state.pageLabel ?? session.state.manualPageLabel ?? '';
+    if (result === 'ambiguous') {
+      showNotice('Etiqueta repetida o ambigua. Utiliza el número físico de página PDF.', 6000);
+    } else if (result === 'not-found') {
+      showNotice('Etiqueta no encontrada. Utiliza el número físico de página PDF.', 6000);
+    }
+  } catch {
+    if (token === session.state.token) showNotice('No se pudo mostrar la página indicada.', 6000);
+  }
+};
+pageLabelInput.addEventListener('change', () => void commitPageLabel());
+pageLabelInput.addEventListener('keydown', event => {
+  if (event.key === 'Enter') {
+    event.preventDefault();
+    void commitPageLabel();
+  }
+});
+
+manualForm.addEventListener('submit', event => {
+  event.preventDefault();
+  const applied = session.setManualPageNumber(manualEditorialStart.valueAsNumber);
+  if (applied) {
+    manualForm.reset();
+    renderManualPreview(session.state);
+  } else showNotice('Indica un número de página del libro entero positivo.', 6000);
+});
+manualEditorialStart.addEventListener('input', () => renderManualPreview(session.state));
+manualClear.addEventListener('click', () => {
+  session.setManualPageNumber(null);
+  manualForm.reset();
+  renderManualPreview(session.state);
 });
 
 zoomInButton.addEventListener('click', () => void session.zoomIn());
@@ -716,18 +836,28 @@ document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'visible') void checkForUpdate();
 });
 
+function restoreUpdateFocus(): void {
+  // Un <dialog> puede restaurar su foco al cerrar; nunca devolverlo al aviso oculto.
+  if (focusBeforeUpdate?.isConnected && !updateNotice.contains(focusBeforeUpdate)
+    && focusBeforeUpdate.getClientRects().length) {
+    focusBeforeUpdate.focus({ preventScroll: true });
+  }
+  if (updateNotice.contains(document.activeElement) || document.activeElement === document.body) {
+    toolsToggle.focus({ preventScroll: true });
+  }
+}
+
 function dismissUpdate(): void {
   updateDeferred = true;
   if (updateDetails.open) updateDetails.close();
   updateView.setAttribute('aria-expanded', 'false');
   updateNotice.hidden = true;
   if (compactTools.matches) window.dispatchEvent(new Event('resize'));
-  if (focusBeforeUpdate?.isConnected && focusBeforeUpdate.getClientRects().length) {
-    focusBeforeUpdate.focus();
-  } else {
-    toolsToggle.focus();
-  }
+  restoreUpdateFocus();
 }
+updateDetails.addEventListener('close', () => {
+  if (updateNotice.hidden) restoreUpdateFocus();
+});
 updateLater.addEventListener('click', dismissUpdate);
 updateClose.addEventListener('click', dismissUpdate);
 updateDetails.addEventListener('cancel', (event) => {

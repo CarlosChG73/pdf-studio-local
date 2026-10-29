@@ -54,6 +54,11 @@ El problema está **observado directamente**, pero todavía **no medido**. Este 
 
 ## 5. Evidencia
 
+Actualización técnica del 29 de octubre: [Validación](validacion.md) registra dos
+muestras públicas y mediciones de la aplicación. No sustituyen una bitácora de
+trabajo real, una muestra escaneada/mixta representativa ni una comparación de
+productividad. Las tablas originales permanecen sin completar donde no hay datos.
+
 | Afirmación | Estado | Cómo se comprobará |
 |---|---|---|
 | Existen PDF extensos (referencia: ~500 páginas) | Observado | Muestra de 3 documentos |

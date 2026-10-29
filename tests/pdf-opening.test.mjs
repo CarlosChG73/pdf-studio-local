@@ -1,3 +1,4 @@
+// Verifica apertura y cambio de documento con infraestructura simulada; no mide fidelidad visual.
 // Run: node --test tests/pdf-opening.test.mjs
 // Session tests: PDF loading, rendering and OCR are controlled substitutes.
 // No PDF parsing, browser rendering or files generated at runtime.

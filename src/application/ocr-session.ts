@@ -1,3 +1,4 @@
+// Gestiona el estado y el resultado OCR de una página, ligado al documento vigente.
 import { recognizePage } from '../infrastructure/ocr/engine';
 
 export type OcrStatus = 'idle' | 'working' | 'done' | 'empty' | 'error';

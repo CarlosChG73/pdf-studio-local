@@ -1,3 +1,4 @@
+// Reproduce carreras y fallos de infraestructura sin depender de tiempos del navegador.
 // Run: node --test
 // Real session, controlled infrastructure and browser. No real PDF rendering.
 import test, { after } from 'node:test';

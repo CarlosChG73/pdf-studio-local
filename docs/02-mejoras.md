@@ -3,7 +3,16 @@
 Registro de todo lo observado usando la aplicación, antes de congelar el alcance
 de la v1. Se escribe en bruto; la clasificación y el orden se hacen después.
 
-## Estado del registro — 28 de octubre de 2026
+## Actualización del registro — 29 de octubre de 2026
+
+Se añadieron etiquetas editoriales, marcadores internos y una equivalencia puntual
+con vista previa, sin extrapolación. El fallo de inicialización OpenJPEG tiene
+recursos locales y una prueba JPEG2000. La migración y el foco del aviso PWA se
+revisan en [Validación](validacion.md), que distingue el resultado final y los
+pendientes reales. El [README](../README.md) mantiene la guía de uso vigente.
+Se conserva íntegro el registro anterior, incluidos sus resultados históricos.
+
+## Estado histórico del registro — 28 de octubre de 2026
 
 Documento interno de observaciones; no sustituye la guía pública del
 [README](../README.md) ni el [changelog](../CHANGELOG.md). Se conservan la lista,

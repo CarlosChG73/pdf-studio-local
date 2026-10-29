@@ -1,3 +1,4 @@
+// Compilación Vite y cachés PWA: interfaz/PDF.js en precaché; OCR bajo demanda.
 import { defineConfig } from 'vite';
 import { VitePWA } from 'vite-plugin-pwa';
 
@@ -13,8 +14,8 @@ export default defineConfig({
       injectRegister: 'auto',
       includeAssets: ['icons/apple-touch-icon.png', 'icons/favicon-32.png'],
       manifest: {
-        name: 'Proyecto PDF — Lector local',
-        short_name: 'Proyecto PDF',
+        name: 'PDF Studio Local',
+        short_name: 'PDF Studio Local',
         description:
           'Lector de PDF con búsqueda, selección de texto y OCR que funciona sin conexión.',
         lang: 'es',
@@ -47,7 +48,7 @@ export default defineConfig({
         // Activate only after consent; other tabs independently decide to reload.
         skipWaiting: false,
         clientsClaim: true,
-        globPatterns: ['**/*.{js,css,html,mjs,svg,png,ico,woff2}'],
+        globPatterns: ['**/*.{js,css,html,mjs,svg,png,ico,woff2}', 'pdfjs/wasm/*.wasm'],
         globIgnores: ['ocr/**'],
         maximumFileSizeToCacheInBytes: 4 * 1024 * 1024,
         navigateFallback: 'index.html',

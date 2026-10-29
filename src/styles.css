@@ -1,3 +1,4 @@
+/* Temas, controles y distribución adaptable; el canvas conserva los colores originales del PDF. */
 :root {
   color-scheme: light;
   --bg: #f4f5f7;
@@ -493,6 +494,70 @@ button:focus-visible,
   font-size: 0.85rem;
   color: var(--muted);
   white-space: nowrap;
+}
+
+.page-label-control[hidden] {
+  display: none;
+}
+
+.page-label-control .page-input {
+  flex: 1;
+  min-width: 0;
+}
+
+.navigation-details {
+  flex-shrink: 0;
+  min-width: 0;
+  font-size: 0.85rem;
+}
+
+.navigation-details[hidden] {
+  display: none;
+}
+
+.navigation-details summary {
+  padding: 0.4rem 0;
+  cursor: pointer;
+}
+
+.navigation-details summary:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.outline-list {
+  max-height: 14rem;
+  overflow: auto;
+  margin: 0.25rem 0;
+  padding-left: 1rem;
+}
+
+.outline-list ul {
+  padding-left: 0.65rem;
+}
+
+.outline-list button {
+  width: 100%;
+  margin-bottom: 0.2rem;
+  text-align: left;
+  overflow-wrap: anywhere;
+}
+
+#manual-pagination-form,
+#manual-pagination-form label {
+  display: grid;
+  gap: 0.35rem;
+  min-width: 0;
+}
+
+#manual-pagination-form .page-input {
+  width: 100%;
+  min-width: 0;
+}
+
+.navigation-note {
+  margin: 0.4rem 0;
+  overflow-wrap: anywhere;
 }
 
 .zoom-level {

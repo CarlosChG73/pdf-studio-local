@@ -1,3 +1,4 @@
+// Verifica búsqueda, posiciones físicas, etiquetas, marcadores y equivalencias puntuales con dobles controlados.
 // Run: node --test tests/pdf-search-navigation.test.mjs
 // Real session and domain logic; controlled PDF text and browser/render substitutes.
 import test, { after } from 'node:test';
@@ -35,7 +36,7 @@ const { PdfSession } = await import('../src/application/pdf-session.ts');
 const { findMatchRanges } = await import('../src/domain/search.ts');
 after(() => { hooks.deregister(); delete globalThis[key]; });
 
-async function harness(t) {
+async function harness(t, labels = null, metadata = {}) {
   const previousWindow = Object.getOwnPropertyDescriptor(globalThis, 'window');
   globalThis.window = { addEventListener() {}, innerHeight: 900 };
   t.after(() => {
@@ -45,7 +46,8 @@ async function harness(t) {
   const texts = ['Inicio sin coincidencias', 'PDF pdf sesión', 'Final PDF'];
   const highlights = [];
   Object.assign(bridge, {
-    openPdf: async () => ({ document: { numPages: texts.length }, task: { async destroy() {} } }),
+    openPdf: async () => ({ document: { numPages: texts.length,
+      getPageLabels: async () => labels, ...metadata }, task: { async destroy() {} } }),
     getPageSize: async () => ({ width: 600, height: 800 }),
     renderPage: async (document, page, canvas, scale) => ({
       task: { promise: Promise.resolve(), cancel() {} }, viewport: { scale },
@@ -76,6 +78,181 @@ test('navegacion: limita extremos y normaliza entradas no validas', async t => {
     assert.deepEqual(host.children, [{ page: expected }]);
     assert.equal(session.state.busy, false);
   }
+});
+
+test('etiquetas válidas: navegación editorial y física; descarta metadatos obsoletos', async t => {
+  const { session } = await harness(t, ['i', '1', 'A-2']);
+  assert.equal(session.state.hasPageLabels, true);
+  assert.equal(session.state.pageLabel, 'i');
+  assert.equal(await session.goToPageLabel('1'), 'navigated');
+  assert.equal(session.currentPage, 2, 'La etiqueta numérica no es una posición física');
+  await session.goToPage(1);
+  assert.equal(session.state.pageLabel, 'i');
+  assert.equal(await session.goToPageLabel('A-2'), 'navigated');
+  assert.equal(session.currentPage, 3);
+  assert.equal(await session.goToPageLabel('inexistente'), 'not-found');
+  assert.equal(session.currentPage, 3);
+
+  const deferred = Promise.withResolvers();
+  const entered = Promise.withResolvers();
+  let oldDestroyed = false;
+  bridge.openPdf = async file => file.name === 'anterior.pdf'
+    ? { document: { numPages: 3, getPageLabels() { entered.resolve(); return deferred.promise; } },
+      task: { async destroy() { oldDestroyed = true; } } }
+    : { document: { numPages: 1, getPageLabels: async () => ['Nueva'] }, task: { async destroy() {} } };
+  const obsoleteOpening = session.open(new File([], 'anterior.pdf'));
+  await entered.promise;
+  assert.equal(session.state.hasPageLabels, false, 'El cambio elimina las etiquetas anteriores inmediatamente');
+  await session.open(new File([], 'actual.pdf'));
+  deferred.resolve(['Vieja', '1', '2']);
+  await obsoleteOpening;
+  assert.equal(oldDestroyed, true);
+  assert.equal(session.state.fileName, 'actual.pdf');
+  assert.equal(session.state.pageLabel, 'Nueva');
+  assert.equal(await session.goToPageLabel('Vieja'), 'not-found');
+  await session.close();
+  assert.equal(session.state.hasPageLabels, false);
+  assert.equal(session.state.pageLabel, null);
+});
+
+test('etiquetas ausentes o inválidas: conserva navegación física', async t => {
+  for (const labels of [null, [], ['i'], ['i', 2, 'iii'], ['', '', '']]) {
+    const { session } = await harness(t, labels);
+    assert.equal(session.state.hasPageLabels, false);
+    assert.equal(session.state.pageLabel, null);
+    assert.equal(await session.goToPageLabel('2'), 'unavailable');
+    await session.goToPage(2);
+    assert.equal(session.currentPage, 2);
+    assert.equal(session.state.pageLabel, null);
+  }
+});
+
+test('etiquetas duplicadas: informa ambigüedad sin mover la página y permite número físico', async t => {
+  const { session } = await harness(t, ['1', '1', 'A']);
+  await session.goToPage(3);
+  assert.equal(await session.goToPageLabel('1'), 'ambiguous');
+  assert.equal(session.currentPage, 3);
+  await session.goToPage(2);
+  assert.equal(session.state.pageLabel, '1');
+  assert.equal(await session.goToPageLabel('A'), 'navigated');
+  assert.equal(session.currentPage, 3);
+});
+
+test('marcadores: destinos por nombre, referencia y posición; rechaza destinos inválidos', async t => {
+  const reference = { num: 10, gen: 0 };
+  const child = { title: 'Sección', dest: [1, { name: 'Fit' }], items: [] };
+  const outline = [{ title: 'Capítulo', dest: 'capitulo', items: [child] }];
+  const { session } = await harness(t, null, {
+    getOutline: async () => outline,
+    getDestination: async name => name === 'capitulo' ? [reference, { name: 'XYZ' }, 0, 100, null] : null,
+    getPageIndex: async ref => { assert.equal(ref, reference); return 2; },
+  });
+  assert.equal(session.state.outline, outline);
+  assert.equal(await session.goToDestination('capitulo'), 'navigated');
+  assert.equal(session.currentPage, 3);
+  assert.equal(await session.goToDestination(child.dest), 'navigated');
+  assert.equal(session.currentPage, 2);
+  for (const invalid of [null, 'inexistente', [], [-1, { name: 'Fit' }], [3, { name: 'Fit' }],
+    [0, { name: 'Desconocido' }], [{ num: '10', gen: 0 }, { name: 'Fit' }]]) {
+    assert.equal(await session.goToDestination(invalid), 'invalid');
+    assert.equal(session.currentPage, 2, 'No debe limitar un destino inválido a una página arbitraria');
+  }
+  await session.close();
+  assert.deepEqual(session.state.outline, []);
+});
+
+test('marcadores: descarta resoluciones y metadatos obsoletos', async t => {
+  const destination = Promise.withResolvers();
+  const reference = Promise.withResolvers();
+  const { session } = await harness(t, null, {
+    getDestination: () => destination.promise,
+    getPageIndex: () => reference.promise,
+  });
+  const old = session.goToDestination('lento');
+  await session.goToPage(2);
+  destination.resolve([0, { name: 'Fit' }]);
+  assert.equal(await old, 'obsolete');
+  assert.equal(session.currentPage, 2);
+  const token = session.state.token;
+  const oldReference = session.goToDestination([{ num: 4, gen: 0 }, { name: 'Fit' }]);
+  bridge.openPdf = async () => ({ document: { numPages: 3, getOutline: async () => null }, task: { async destroy() {} } });
+  await session.open(new File([], 'nuevo.pdf'));
+  reference.resolve(2);
+  assert.equal(await oldReference, 'obsolete');
+  assert.equal(await session.goToDestination([2, { name: 'Fit' }], token), 'obsolete');
+  assert.equal(session.currentPage, 1);
+
+  const outline = Promise.withResolvers();
+  const entered = Promise.withResolvers();
+  bridge.openPdf = async file => ({ document: { numPages: 3,
+    getOutline: () => file.name === 'anterior.pdf' ? (entered.resolve(), outline.promise) : null },
+    task: { async destroy() {} } });
+  const opening = session.open(new File([], 'anterior.pdf'));
+  await entered.promise;
+  await session.open(new File([], 'vigente.pdf'));
+  outline.resolve([{ title: 'Viejo', dest: [2, { name: 'Fit' }], items: [] }]);
+  await opening;
+  assert.equal(session.state.fileName, 'vigente.pdf');
+  assert.deepEqual(session.state.outline, []);
+});
+
+test('sin marcadores o con error de metadatos: mantiene navegación física', async t => {
+  const warn = t.mock.method(console, 'warn', () => {});
+  const { session } = await harness(t, null, { getOutline: async () => { throw new Error('Metadatos dañados'); } });
+  assert.deepEqual(session.state.outline, []);
+  assert.equal(warn.mock.calls.length, 1);
+  await session.goToPage(3);
+  assert.equal(session.currentPage, 3);
+});
+
+test('correspondencia puntual: página encontrada, sin extrapolación, validación y limpieza', async t => {
+  const { session } = await harness(t);
+  await session.search('pdf');
+  assert.equal(session.currentPage, 2, 'Parte de la página encontrada por la búsqueda');
+  assert.equal(session.state.manualReference, null);
+  assert.equal(session.setManualPageNumber(22), true);
+  assert.deepEqual(session.state.manualReference, { physicalPage: 2, editorialPage: 22 });
+  const copy = session.state.manualReference;
+  copy.physicalPage = 1;
+  assert.equal(session.state.manualReference.physicalPage, 2);
+  assert.equal(session.state.manualPageLabel, '22');
+  for (const label of ['21', '23', 'i', '22.5']) {
+    assert.equal(await session.goToPageLabel(label), 'not-found');
+    assert.equal(session.currentPage, 2);
+  }
+  await session.goToPage(1);
+  assert.equal(session.state.manualPageLabel, null, 'No extrapola a la página anterior');
+  assert.equal(await session.goToPageLabel('22'), 'navigated');
+  assert.equal(session.currentPage, 2);
+  for (const invalid of [0, -1, 1.5, NaN, Infinity, Number.MAX_SAFE_INTEGER + 1]) {
+    assert.equal(session.setManualPageNumber(invalid), false);
+    assert.equal(session.state.manualReference.editorialPage, 22);
+  }
+  await session.goToPage(3);
+  assert.equal(session.state.manualPageLabel, null, 'No extrapola a la página siguiente');
+  assert.equal(session.setManualPageNumber(null), true);
+  assert.equal(await session.goToPageLabel('22'), 'unavailable');
+  assert.equal(session.setManualPageNumber(30), true);
+  await session.open(new File([], 'otro.pdf'));
+  assert.equal(session.state.manualReference, null);
+  assert.equal(session.state.manualPageLabel, null);
+  await session.close();
+  assert.equal(session.setManualPageNumber(22), false);
+});
+
+test('correspondencia y etiquetas: no navega ante conflicto; coincidencia idéntica no es ambigua', async t => {
+  const { session } = await harness(t, ['1', '2', '3']);
+  await session.goToPage(2);
+  session.setManualPageNumber(1);
+  await session.goToPage(3);
+  assert.equal(await session.goToPageLabel('1'), 'ambiguous');
+  assert.equal(session.currentPage, 3);
+  await session.goToPage(2);
+  session.setManualPageNumber(2);
+  await session.goToPage(3);
+  assert.equal(await session.goToPageLabel('2'), 'navigated');
+  assert.equal(session.currentPage, 2);
+  assert.equal(session.state.pageLabel, '2');
 });
 
 test('busqueda: rangos exactos, mayusculas, acentos y consulta vacia', () => {
